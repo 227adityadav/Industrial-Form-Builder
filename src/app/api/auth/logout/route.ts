@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE, SESSION_COOKIE, USERNAME_COOKIE } from "@/lib/auth";
+import { useSecureSessionCookies } from "@/lib/cookie-secure";
 import { connectToDatabase } from "@/lib/db/connection";
 import { deleteSessionByToken } from "@/lib/db/sessions";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: Request) {
   await connectToDatabase();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   await deleteSessionByToken(token);
   const res = NextResponse.json({ ok: true });
-  const secure = process.env.NODE_ENV === "production";
+  const secure = useSecureSessionCookies(request);
   const clearSession = {
     path: "/" as const,
     maxAge: 0,
@@ -22,6 +23,6 @@ export async function POST() {
   };
   res.cookies.set(SESSION_COOKIE, "", clearSession);
   res.cookies.set(AUTH_COOKIE, "", clearSession);
-  res.cookies.set(USERNAME_COOKIE, "", { path: "/", maxAge: 0 });
+  res.cookies.set(USERNAME_COOKIE, "", { path: "/", maxAge: 0, secure, sameSite: "lax" });
   return res;
 }

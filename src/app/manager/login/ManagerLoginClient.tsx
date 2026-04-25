@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/ui/AuthShell";
 import { ChataiGlobalSearch, MANAGER_PENDING_FLAG } from "@/components/chatai/ChataiGlobalSearch";
+import { logAuthClient } from "@/lib/client-auth-debug";
 import { safeInternalPath } from "@/lib/safe-internal-path";
 
 export function ManagerLoginClient() {
@@ -20,6 +21,7 @@ export function ManagerLoginClient() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    logAuthClient("login_submit", { role: "manager", next });
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -27,8 +29,10 @@ export function ManagerLoginClient() {
       body: JSON.stringify({ role: "manager", username, password }),
     });
     setLoading(false);
+    logAuthClient("login_response", { status: res.status, ok: res.ok });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      logAuthClient("login_error_body", { error: data?.error ?? null });
       setError(data?.error ?? "Login failed");
       return;
     }
@@ -40,7 +44,9 @@ export function ManagerLoginClient() {
     } catch {
       /* ignore */
     }
-    window.location.assign(safeInternalPath(dest, "/manager"));
+    const finalDest = safeInternalPath(dest, "/manager");
+    logAuthClient("login_redirect", { next: finalDest });
+    window.location.assign(finalDest);
   }
 
   return (

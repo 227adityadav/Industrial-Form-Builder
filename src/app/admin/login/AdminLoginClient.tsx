@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/ui/AuthShell";
+import { logAuthClient } from "@/lib/client-auth-debug";
 import { safeInternalPath } from "@/lib/safe-internal-path";
 
 export function AdminLoginClient() {
@@ -18,6 +19,7 @@ export function AdminLoginClient() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    logAuthClient("login_submit", { role: "admin", next });
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -25,11 +27,14 @@ export function AdminLoginClient() {
       body: JSON.stringify({ role: "admin", password }),
     });
     setLoading(false);
+    logAuthClient("login_response", { status: res.status, ok: res.ok });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      logAuthClient("login_error_body", { error: data?.error ?? null });
       setError(data?.error ?? "Login failed");
       return;
     }
+    logAuthClient("login_redirect", { next });
     window.location.assign(next);
   }
 
