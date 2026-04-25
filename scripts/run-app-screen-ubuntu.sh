@@ -9,13 +9,13 @@
 #   project root `.env.local` with at least MONGODB_URI=... (copy from config/.env.example).
 #
 # Environment:
-#   SCREEN_NAME   screen session name (default: industrial-form-builder)
+#   SCREEN_NAME   screen session name (default: app)
 #   NODE_MAJOR    Node major version for NodeSource (default: 22)
 #   SKIP_APT      set to 1 to skip apt installs (screen, curl, etc.)
 
 set -euo pipefail
 
-SCREEN_NAME="${SCREEN_NAME:-industrial-form-builder}"
+SCREEN_NAME="${SCREEN_NAME:-app}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,6 +34,15 @@ need_sudo() {
   fi
 }
 
+run_nodesource_setup() {
+  local url="https://deb.nodesource.com/setup_${NODE_MAJOR}.x"
+  if [[ -n "${SUDO}" ]]; then
+    curl -fsSL "${url}" | ${SUDO} -E bash -
+  else
+    curl -fsSL "${url}" | bash -
+  fi
+}
+
 need_sudo
 
 if [[ "${SKIP_APT:-0}" != "1" ]]; then
@@ -43,7 +52,7 @@ fi
 
 if ! command -v node >/dev/null 2>&1 || ! node -e "process.exit(Number(process.versions.node.split('.')[0]) >= 20 ? 0 : 1)" 2>/dev/null; then
   echo "Installing Node.js ${NODE_MAJOR}.x via NodeSource..."
-  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | ${SUDO} -E bash -
+  run_nodesource_setup
   ${SUDO} apt-get install -y nodejs
 fi
 
@@ -71,17 +80,17 @@ export NODE_ENV=production
 npm ci
 npm run build
 
-if screen -list | grep -q "\\.${SCREEN_NAME}[[:space:]]"; then
-  echo "Screen session '${SCREEN_NAME}' already exists. Attach with: screen -r ${SCREEN_NAME}" >&2
-  echo "To replace it: screen -S ${SCREEN_NAME} -X quit  # then re-run this script" >&2
-  exit 1
+screen -wipe >/dev/null 2>&1 || true
+if screen -list 2>/dev/null | grep -qE "[[:digit:]]+\\.${SCREEN_NAME}[[:space:]]"; then
+  echo "Stopping existing screen session: ${SCREEN_NAME}"
+  screen -S "${SCREEN_NAME}" -X quit 2>/dev/null || true
+  sleep 1
 fi
 
-# Detached screen running npm start in the repo directory (Next loads .env.local automatically).
 screen -dmS "${SCREEN_NAME}" bash -lc "cd \"${REPO_ROOT}\" && export NODE_ENV=production && exec npm start"
 
 echo "Started production server in screen session: ${SCREEN_NAME}"
 echo "  Attach:    screen -r ${SCREEN_NAME}"
 echo "  Detach:    Ctrl+A then D"
 echo "  List:      screen -ls"
-echo "Default URL: http://127.0.0.1:3000 (set PORT= in .env.local to change)"
+echo "App listens on http://127.0.0.1:3000 by default (set PORT in .env.local to change; match scripts/setup-nginx-reverse-proxy-ubuntu.sh)."
