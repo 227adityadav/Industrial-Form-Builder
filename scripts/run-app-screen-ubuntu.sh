@@ -14,12 +14,14 @@
 #   SKIP_APT      set to 1 to skip apt installs (screen, curl, etc.)
 #   SKIP_SWAP     set to 1 to skip creating/activating a swap file (not recommended on 512MB–1GB RAM)
 #   SWAPFILE_MB   size of /swapfile when auto-added (default: 2048)
+#   BUILD_MAX_OLD_SPACE_MB  V8 heap cap during `next build` / TypeScript (default: 3072; needs swap on small VPS)
 
 set -euo pipefail
 
 SCREEN_NAME="${SCREEN_NAME:-app}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 SWAPFILE_MB="${SWAPFILE_MB:-2048}"
+BUILD_MAX_OLD_SPACE_MB="${BUILD_MAX_OLD_SPACE_MB:-3072}"
 # Skip auto-swap when RAM+swap is at least this (~1.75GB default); below that, npm/next often need swap on small droplets.
 MIN_TOTAL_MEM_KB="${MIN_TOTAL_MEM_KB:-1800000}"
 
@@ -128,7 +130,8 @@ export npm_config_audit="${npm_config_audit:-false}"
 export npm_config_fund="${npm_config_fund:-false}"
 
 npm ci
-npm run build
+# Next's TypeScript step can exceed default ~512MiB heap on large apps; raise limit (swap backs it on tiny droplets).
+NODE_OPTIONS="--max-old-space-size=${BUILD_MAX_OLD_SPACE_MB}${NODE_OPTIONS:+ ${NODE_OPTIONS}}" npm run build
 
 screen -wipe >/dev/null 2>&1 || true
 if screen -list 2>/dev/null | grep -qE "[[:digit:]]+\\.${SCREEN_NAME}[[:space:]]"; then
