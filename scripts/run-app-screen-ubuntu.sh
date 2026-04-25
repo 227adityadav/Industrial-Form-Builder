@@ -120,7 +120,8 @@ fi
 
 ensure_swap_for_build
 
-export NODE_ENV=production
+# Do not set NODE_ENV=production before npm ci / next build: npm would skip
+# devDependencies, but Tailwind/PostCSS/TypeScript live there and are required to build.
 # Smaller spikes during install (helps weak VPS; swap above is the main fix).
 export npm_config_maxsockets="${npm_config_maxsockets:-1}"
 export npm_config_audit="${npm_config_audit:-false}"
