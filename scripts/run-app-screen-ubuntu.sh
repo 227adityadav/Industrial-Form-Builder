@@ -12,11 +12,16 @@
 #   SCREEN_NAME   screen session name (default: app)
 #   NODE_MAJOR    Node major version for NodeSource (default: 22)
 #   SKIP_APT      set to 1 to skip apt installs (screen, curl, etc.)
+#   SKIP_SWAP     set to 1 to skip creating/activating a swap file (not recommended on 512MB–1GB RAM)
+#   SWAPFILE_MB   size of /swapfile when auto-added (default: 2048)
 
 set -euo pipefail
 
 SCREEN_NAME="${SCREEN_NAME:-app}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
+SWAPFILE_MB="${SWAPFILE_MB:-2048}"
+# Skip auto-swap when RAM+swap is at least this (~1.75GB default); below that, npm/next often need swap on small droplets.
+MIN_TOTAL_MEM_KB="${MIN_TOTAL_MEM_KB:-1800000}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -44,6 +49,44 @@ run_nodesource_setup() {
 }
 
 need_sudo
+
+ensure_swap_for_build() {
+  if [[ "${SKIP_SWAP:-0}" == "1" ]]; then
+    echo "SKIP_SWAP=1: not modifying swap. On small droplets, npm ci / next build may be killed (OOM)."
+    return 0
+  fi
+  local mem_kb swap_kb total_kb
+  mem_kb=$(awk '/MemTotal:/ {print $2}' /proc/meminfo)
+  swap_kb=$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)
+  total_kb=$((mem_kb + swap_kb))
+  if [[ "${total_kb}" -ge "${MIN_TOTAL_MEM_KB}" ]]; then
+    echo "Memory+swap ~$((total_kb / 1024))MB — skipping auto swap."
+    return 0
+  fi
+  echo "Low RAM+swap (~$((total_kb / 1024))MB). Adding/using ${SWAPFILE_MB}MB swap file to avoid OOM during install/build..."
+  if ${SUDO} swapon --show 2>/dev/null | grep -q '^/swapfile '; then
+    echo "/swapfile already active."
+    return 0
+  fi
+  if [[ -f /swapfile ]]; then
+    ${SUDO} swapon /swapfile 2>/dev/null && {
+      echo "Activated existing /swapfile."
+      return 0
+    }
+    echo "Existing /swapfile could not be enabled; remove or fix it manually, then re-run." >&2
+    return 1
+  fi
+  ${SUDO} fallocate -l "${SWAPFILE_MB}M" /swapfile 2>/dev/null ||
+    ${SUDO} dd if=/dev/zero of=/swapfile bs=1M count="${SWAPFILE_MB}" status=none conv=fsync
+  ${SUDO} chmod 600 /swapfile
+  ${SUDO} mkswap /swapfile
+  ${SUDO} swapon /swapfile
+  if ! ${SUDO} grep -qE '^[[:space:]]*/swapfile[[:space:]]' /etc/fstab 2>/dev/null; then
+    echo '/swapfile none swap sw 0 0' | ${SUDO} tee -a /etc/fstab >/dev/null
+  fi
+  echo "Swap enabled:"
+  ${SUDO} swapon --show || true
+}
 
 if [[ "${SKIP_APT:-0}" != "1" ]]; then
   ${SUDO} apt-get update
@@ -75,7 +118,13 @@ if [[ ! -f .env.local ]]; then
   exit 1
 fi
 
+ensure_swap_for_build
+
 export NODE_ENV=production
+# Smaller spikes during install (helps weak VPS; swap above is the main fix).
+export npm_config_maxsockets="${npm_config_maxsockets:-1}"
+export npm_config_audit="${npm_config_audit:-false}"
+export npm_config_fund="${npm_config_fund:-false}"
 
 npm ci
 npm run build
