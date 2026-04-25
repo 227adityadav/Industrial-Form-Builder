@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import type { ChatBlock } from "@/lib/chatai/types";
+import { randomUuid } from "@/lib/random-uuid";
 
 const STORAGE_KEY = "ifb_chatai_history_v1";
 
@@ -175,7 +176,7 @@ export function ChataiChatClient() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
-    const userId = crypto.randomUUID();
+    const userId = randomUuid();
     const userMsg: UserMsg = { kind: "user", id: userId, text: trimmed };
     setMessages((m) => [...m, userMsg]);
     setInput("");
@@ -193,7 +194,7 @@ export function ChataiChatClient() {
         ...m,
         {
           kind: "assistant",
-          id: crypto.randomUUID(),
+          id: randomUuid(),
           intentId: null,
           blocks: [
             {
@@ -224,7 +225,7 @@ export function ChataiChatClient() {
       }
       next.push({
         kind: "assistant",
-        id: crypto.randomUUID(),
+        id: randomUuid(),
         intentId: data.intentId ?? null,
         blocks,
       });

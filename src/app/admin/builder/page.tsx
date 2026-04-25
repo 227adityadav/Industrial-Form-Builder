@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { normalizeFormSchema } from "@/lib/form-schema-normalize";
 import { alignGridData, pruneCellRangeBounds } from "@/lib/grid-data";
 import { newLeaf } from "@/lib/grid-ops";
+import { randomUuid } from "@/lib/random-uuid";
 import { defaultGridsFromTemplate } from "@/lib/submission-grids";
 import type {
   FieldsSection,
@@ -56,18 +57,18 @@ function finalizeCellRangeEntry(
 
 function defaultSelectOptions(): SelectOption[] {
   return [
-    { id: crypto.randomUUID(), label: "Option 1", value: "option_1" },
-    { id: crypto.randomUUID(), label: "Option 2", value: "option_2" },
+    { id: randomUuid(), label: "Option 1", value: "option_1" },
+    { id: randomUuid(), label: "Option 2", value: "option_2" },
   ];
 }
 
 type TemplateRecord = FormSchema & { updatedAt?: string; createdAt?: string };
 
 function newTemplate(): FormSchema {
-  const fieldsId = crypto.randomUUID();
-  const gridId = crypto.randomUUID();
+  const fieldsId = randomUuid();
+  const gridId = randomUuid();
   return normalizeFormSchema({
-    id: crypto.randomUUID(),
+    id: randomUuid(),
     name: "New Template",
     version: 1,
     sections: [
@@ -219,7 +220,7 @@ export default function AdminBuilderPage() {
 
   function addFieldsSection() {
     const block: FieldsSection = {
-      id: crypto.randomUUID(),
+      id: randomUuid(),
       kind: "fields",
       title: "Info fields",
       fields: [],
@@ -228,7 +229,7 @@ export default function AdminBuilderPage() {
   }
 
   function addGridSection() {
-    const id = crypto.randomUUID();
+    const id = randomUuid();
     const grid = { columns: [newLeaf("Specifications")], rowCount: 6 };
     const block: GridBlockSection = { id, kind: "grid", title: "Grid", grid };
     setSchema((s) => ({ ...s, sections: [...s.sections, block] }));
@@ -255,7 +256,7 @@ export default function AdminBuilderPage() {
 
   function addTopField(sectionIndex: number, section: FieldsSection) {
     const f: TopField = {
-      id: crypto.randomUUID(),
+      id: randomUuid(),
       label: "New field",
       inputType: "text",
       required: false,
@@ -386,7 +387,7 @@ export default function AdminBuilderPage() {
                       ...s,
                       revealButtons: [
                         ...(s.revealButtons ?? []),
-                        { id: crypto.randomUUID(), label: "Open section" },
+                        { id: randomUuid(), label: "Open section" },
                       ],
                     }))
                   }
@@ -654,7 +655,7 @@ export default function AdminBuilderPage() {
                                               options: [
                                                 ...(x.options ?? []),
                                                 {
-                                                  id: crypto.randomUUID(),
+                                                  id: randomUuid(),
                                                   label: `Option ${(x.options?.length ?? 0) + 1}`,
                                                   value: `option_${(x.options?.length ?? 0) + 1}`,
                                                 },

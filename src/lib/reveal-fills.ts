@@ -1,4 +1,5 @@
 import { alignGridData, collectLeafInputs } from "@/lib/grid-data";
+import { randomUuid } from "@/lib/random-uuid";
 import { gridCellValueIsPresent } from "@/lib/grid-cell-present";
 import { mergeUserGridOneSectionWithLocks } from "@/lib/grid-template-locks";
 import type { FormSchema, FormSection, GridBlockSection, GridData } from "@/types/form-schema";
@@ -22,7 +23,7 @@ export function emptyRevealFillInstance(template: FormSchema, revealButtonId: st
     }
   }
   return {
-    id: crypto.randomUUID(),
+    id: randomUuid(),
     revealButtonId,
     openedAt: new Date().toISOString(),
     top: {},
@@ -198,7 +199,7 @@ export function splitSubmissionForEdit(
     }
     if (any) {
       migrated.push({
-        id: crypto.randomUUID(),
+        id: randomUuid(),
         revealButtonId: btn.id,
         openedAt: submission.submittedAt,
         filledAt: submission.updatedAt ?? submission.submittedAt,

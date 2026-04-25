@@ -5,6 +5,7 @@ import { normalizeFolderRecord, type StoredFolder } from "@/lib/folder-record";
 import { computeNextFillDueAt } from "@/lib/refill-due";
 import type { RefillNotificationRecord } from "@/types/refill-notification";
 import type { SubmissionRecord } from "@/types/submission";
+import { randomUuid } from "@/lib/random-uuid";
 import { normalizeSubmissionStatus } from "@/types/submission";
 /**
  * After a final submission, schedule or replace the refill reminder for this folder + template.
@@ -32,7 +33,7 @@ export async function upsertRefillNotificationForSubmission(submission: Submissi
 
   const now = new Date().toISOString();
   const record: RefillNotificationRecord = {
-    id: crypto.randomUUID(),
+    id: randomUuid(),
     folderId: fid,
     folderName: folder.name,
     templateId: tid,

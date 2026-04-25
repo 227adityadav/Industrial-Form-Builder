@@ -1,4 +1,5 @@
 import { newLeaf } from "@/lib/grid-ops";
+import { randomUuid } from "@/lib/random-uuid";
 import type {
   FieldsSection,
   FooterField,
@@ -118,7 +119,7 @@ export function normalizeFormSchema(raw: unknown): FormSchema {
       : r._id != null
         ? String((r as { _id: unknown })._id)
         : null;
-  const id = idFromDoc ?? crypto.randomUUID();
+  const id = idFromDoc ?? randomUuid();
   const name = typeof r.name === "string" ? r.name : "Untitled";
   const version = typeof r.version === "number" ? r.version : 1;
   const footer = defaultFooter(r.footer);

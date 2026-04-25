@@ -7,6 +7,7 @@ import {
   SubmissionModel,
 } from "@/lib/db/models";
 import { normalizeFormSchema } from "@/lib/form-schema-normalize";
+import { randomUuid } from "@/lib/random-uuid";
 import { normalizeFolderRecord, type StoredFolder } from "@/lib/folder-record";
 import type { FormSchema, Id } from "@/types/form-schema";
 import type { FolderRecord, MasterFolderRecord } from "@/types/folder";
@@ -89,7 +90,7 @@ export async function upsertFolder(
 ): Promise<FolderRecord> {
   await connectToDatabase();
   const now = new Date().toISOString();
-  const id = body.id ?? crypto.randomUUID();
+  const id = body.id ?? randomUuid();
   const existingDoc = (await FolderModel.findOne({ _id: id }).lean()) as { _id: string; [k: string]: unknown } | null;
   const prev = existingDoc ? normalizeFolderRecord(folderDocToStored(existingDoc)) : null;
   const masterFolderIds =
@@ -176,7 +177,7 @@ export async function listMasterFolders(): Promise<MasterFolderRecord[]> {
 export async function createMasterFolder(name: string): Promise<MasterFolderRecord> {
   await connectToDatabase();
   const now = new Date().toISOString();
-  const id = crypto.randomUUID();
+  const id = randomUuid();
   const record: MasterFolderRecord = { id, name, createdAt: now, updatedAt: now };
   await MasterFolderModel.create({ _id: id, name, createdAt: now, updatedAt: now });
   return record;

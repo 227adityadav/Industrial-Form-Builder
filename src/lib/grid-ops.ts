@@ -1,3 +1,4 @@
+import { randomUuid } from "@/lib/random-uuid";
 import type { GridColumnNode, Id, InputType } from "@/types/form-schema";
 
 function clone<T>(v: T): T {
@@ -6,7 +7,7 @@ function clone<T>(v: T): T {
 
 export function newLeaf(label = "Column", inputType: InputType = "text"): GridColumnNode {
   return {
-    id: crypto.randomUUID(),
+    id: randomUuid(),
     label,
     width: 140,
     leaf: { inputType },

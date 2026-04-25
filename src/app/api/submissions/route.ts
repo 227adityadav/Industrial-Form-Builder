@@ -8,6 +8,7 @@ import { mergeRevealFillGridsForOperator, sanitizeRevealFills } from "@/lib/reve
 import { getAuthSession } from "@/lib/session";
 import { upsertRefillNotificationForSubmission } from "@/lib/refill-notification-service";
 import { connectToDatabase } from "@/lib/db/connection";
+import { randomUuid } from "@/lib/random-uuid";
 import { getTemplateById, insertSubmission, listSubmissionsAll } from "@/lib/db/content";
 
 export const dynamic = "force-dynamic";
@@ -149,7 +150,7 @@ export async function POST(req: Request) {
       ? mergeRevealFillGridsForOperator(sanitizeRevealFills(revealFillsRaw, template), template)
       : sanitizeRevealFills(revealFillsRaw, template);
   const record: SubmissionRecord = {
-    id: crypto.randomUUID(),
+    id: randomUuid(),
     templateId: body.templateId,
     folderId: body.folderId,
     username: session.username,
