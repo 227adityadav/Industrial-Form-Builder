@@ -25,17 +25,23 @@ async function getMongoConnectionString(): Promise<string> {
   throw new Error("MONGODB_URI is not set. Set it in your production environment.");
 }
 
+function connectOptions(): { serverSelectionTimeoutMS: number } {
+  const ms = Number.parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS ?? "10000", 10);
+  return { serverSelectionTimeoutMS: Number.isFinite(ms) && ms > 0 ? ms : 10_000 };
+}
+
 function connectPromise(): Promise<typeof mongoose> {
   return (async () => {
     const url = await getMongoConnectionString();
     mongoose.set("strictQuery", true);
-    return mongoose.connect(url);
+    return mongoose.connect(url, connectOptions());
   })();
 }
 
 /**
- * Caches the connection in dev to survive hot reloads.
- * Clears the cache on failure so a later retry (e.g. after fixing `MONGODB_URI`) can succeed.
+ * Caches a single in-flight/resolved connection on `globalThis` (dev hot reloads + serverless
+ * request reuse in production) so we do not open parallel connections on every call.
+ * Clears the cache on failure so a later attempt can succeed after fixing `MONGODB_URI` etc.
  */
 export async function connectToDatabase(): Promise<typeof mongoose> {
   if (globalForMongoose.mongooseConn) {
@@ -47,13 +53,9 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
       return m;
     })
     .catch((err: unknown) => {
-      if (process.env.NODE_ENV === "development") {
-        globalForMongoose.mongooseConn = null;
-      }
+      globalForMongoose.mongooseConn = null;
       throw err;
     });
-  if (process.env.NODE_ENV === "development") {
-    globalForMongoose.mongooseConn = p;
-  }
+  globalForMongoose.mongooseConn = p;
   return p;
 }

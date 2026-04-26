@@ -16,6 +16,9 @@ function authApiLog(message: string, data: Record<string, unknown>) {
 function dbErrorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) {
     const m = String((err as { message: string }).message);
+    if (/buffering timed out|bufferCommands is enabled/i.test(m)) {
+      return "MongoDB did not become ready in time. If you use a remote database (e.g. Atlas), check that MONGODB_URI is correct, the cluster allows your IP, and the network is reachable. For local MongoDB, ensure the server is running. See also MONGODB_SERVER_SELECTION_TIMEOUT_MS in env.";
+    }
     if (/connect ECONNREFUSED|127\.0\.0\.1:27017/i.test(m) || /ECONNREFUSED.*27017/.test(m)) {
       return "Cannot connect to MongoDB. Start MongoDB locally or set MONGODB_URI in .env.local to your database.";
     }
