@@ -6,7 +6,8 @@
 #   bash scripts/run-app-screen-ubuntu.sh
 #
 # Prerequisites: MongoDB reachable (e.g. after scripts/install-mongodb-ubuntu.sh) and
-#   project root `.env.local` with at least MONGODB_URI=... (copy from config/.env.example).
+#   MONGODB_URI set for production: export in the shell, or in `.env.production` or `.env.local`
+#   (uncommented); see `config/.env.production.example`.
 #
 # Environment:
 #   SCREEN_NAME   screen session name (default: app)
@@ -113,10 +114,25 @@ if [[ ! -f package.json ]]; then
   exit 1
 fi
 
-if [[ ! -f .env.local ]]; then
-  echo "Missing .env.local in ${REPO_ROOT}." >&2
-  echo "Create it with at least MONGODB_URI (see config/.env.example). Example:" >&2
-  echo "  cp config/.env.example .env.local && nano .env.local" >&2
+mongouri_configured() {
+  if [[ -n "${MONGODB_URI:-}" ]]; then
+    return 0
+  fi
+  for f in .env.production.local .env.production .env.local; do
+    [[ -f "$f" ]] || continue
+    if grep -qE '^[[:space:]]*MONGODB_URI=.' "$f" 2>/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+if ! mongouri_configured; then
+  echo "MONGODB_URI is not set. Production requires a real MongoDB connection string." >&2
+  echo "Create a file in ${REPO_ROOT} (or export MONGODB_URI in your shell), e.g.:" >&2
+  echo "  cp config/.env.production.example .env.production" >&2
+  echo "  nano .env.production   # set MONGODB_URI=..." >&2
+  echo "Or see config/.env.example for local .env.local." >&2
   exit 1
 fi
 

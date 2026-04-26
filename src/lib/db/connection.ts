@@ -22,7 +22,11 @@ async function getMongoConnectionString(): Promise<string> {
     }
     return globalForMongoose.ifbMongoMemory.uri;
   }
-  throw new Error("MONGODB_URI is not set. Set it in your production environment.");
+  throw new Error(
+    "MONGODB_URI is not set. In production, set the connection string: export MONGODB_URI before `npm start`, " +
+      "or add MONGODB_URI=... to `.env.production` or `.env.local` in the app root (see `config/.env.production.example`). " +
+      "The in-memory dev database is only used when NODE_ENV=development."
+  );
 }
 
 function connectOptions(): { serverSelectionTimeoutMS: number } {
