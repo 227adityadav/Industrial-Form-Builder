@@ -962,12 +962,6 @@ export default function AdminBuilderPage() {
             );
           })}
 
-          <div className="ui-card">
-            <h2 className="ui-section-title">Footer / workflow</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Footer fields are defined in the schema; dedicated builder controls are planned next.
-            </p>
-          </div>
         </section>
       </div>
     </div>
