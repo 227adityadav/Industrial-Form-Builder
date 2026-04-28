@@ -63,15 +63,9 @@ export async function upsertTemplate(body: Partial<FormSchema> & { id: string; n
   if (!normalizedName) {
     throw new Error("Template name is required");
   }
-  const duplicate = (await FormTemplateModel.findOne({ name: normalized.name }).lean()) as TemplateRow | null;
-  if (duplicate && duplicate.id !== body.id) {
-    throw new DuplicateTemplateNameError(normalized.name);
-  }
-  const templates = (await FormTemplateModel.find({}, { id: 1, name: 1 }).lean().exec()) as Array<
-    Pick<TemplateRow, "id" | "name">
-  >;
+  const templates = await listTemplatesNormalized();
   const duplicateByNormalizedName = templates.find(
-    (template) => template.id !== body.id && normalizeTemplateName(template.name) === normalizedName
+    (template) => template.id !== normalized.id && normalizeTemplateName(template.name) === normalizedName
   );
   if (duplicateByNormalizedName) {
     throw new DuplicateTemplateNameError(normalized.name);
