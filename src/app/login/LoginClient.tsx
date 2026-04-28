@@ -44,12 +44,6 @@ export function LoginClient() {
       accent="emerald"
       eyebrow="Operator"
       title="Sign in"
-      subtitle={
-        <>
-          Try <span className="font-medium text-zinc-800">demo</span> /{" "}
-          <span className="font-medium text-zinc-800">user123</span>, or any user created in Admin → Users.
-        </>
-      }
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <label className="text-sm font-medium text-zinc-800">

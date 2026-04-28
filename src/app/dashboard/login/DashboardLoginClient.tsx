@@ -44,12 +44,6 @@ export function DashboardLoginClient() {
       accent="cyan"
       eyebrow="Dashboard"
       title="Sign in"
-      subtitle={
-        <>
-          View master folders, site folders, and submissions—read-only. Demo password:{" "}
-          <span className="font-medium text-zinc-800">dashboard123</span>.
-        </>
-      }
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <label className="text-sm font-medium text-zinc-800">

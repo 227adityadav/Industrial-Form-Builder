@@ -54,13 +54,6 @@ export function ManagerLoginClient() {
       accent="violet"
       eyebrow="Manager"
       title="Sign in"
-      subtitle={
-        <>
-          After sign-in you can create <span className="font-medium text-zinc-800">master folders</span> and tag each
-          site folder to one or many of them. Demo password:{" "}
-          <span className="font-medium text-zinc-800">manager123</span>.
-        </>
-      }
     >
       <div className="mb-6 rounded-xl border border-violet-200/80 bg-white/80 p-4">
         <ChataiGlobalSearch variant="login" />

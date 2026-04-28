@@ -44,12 +44,6 @@ export function SpcLoginClient() {
       accent="emerald"
       eyebrow="SPC"
       title="Process capability sign-in"
-      subtitle={
-        <>
-          Demo account: <span className="font-medium text-zinc-800">SPC</span> /{" "}
-          <span className="font-medium text-zinc-800">spc123</span>. Opens the X̄–R capability study workspace.
-        </>
-      }
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <label className="text-sm font-medium text-zinc-800">
