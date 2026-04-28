@@ -43,11 +43,6 @@ export function AdminLoginClient() {
       accent="amber"
       eyebrow="Administrator"
       title="Admin sign in"
-      subtitle={
-        <>
-          Demo password defaults to <span className="font-medium text-zinc-800">admin123</span>.
-        </>
-      }
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <label className="text-sm font-medium text-zinc-800">
