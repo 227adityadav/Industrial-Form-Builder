@@ -16,6 +16,17 @@ import type { SubmissionRecord } from "@/types/submission";
 
 type TemplateRow = FormSchema & { createdAt: string; updatedAt: string };
 
+export class DuplicateTemplateNameError extends Error {
+  constructor(name: string) {
+    super(`Template name "${name}" already exists`);
+    this.name = "DuplicateTemplateNameError";
+  }
+}
+
+function normalizeTemplateName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 function folderDocToStored(d: { _id: string; [k: string]: unknown }): StoredFolder {
   const { _id, ...rest } = d;
   return { ...(rest as object), id: _id } as StoredFolder;
@@ -48,9 +59,27 @@ export async function upsertTemplate(body: Partial<FormSchema> & { id: string; n
   await connectToDatabase();
   const now = new Date().toISOString();
   const normalized = normalizeFormSchema(body);
+  const normalizedName = normalizeTemplateName(normalized.name);
+  if (!normalizedName) {
+    throw new Error("Template name is required");
+  }
+  const duplicate = (await FormTemplateModel.findOne({ name: normalized.name }).lean()) as TemplateRow | null;
+  if (duplicate && duplicate.id !== body.id) {
+    throw new DuplicateTemplateNameError(normalized.name);
+  }
+  const templates = (await FormTemplateModel.find({}, { id: 1, name: 1 }).lean().exec()) as Array<
+    Pick<TemplateRow, "id" | "name">
+  >;
+  const duplicateByNormalizedName = templates.find(
+    (template) => template.id !== body.id && normalizeTemplateName(template.name) === normalizedName
+  );
+  if (duplicateByNormalizedName) {
+    throw new DuplicateTemplateNameError(normalized.name);
+  }
   const existing = (await FormTemplateModel.findOne({ id: body.id }).lean()) as TemplateRow | null;
   const record: TemplateRow = {
     ...normalized,
+    name: normalized.name.trim(),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };

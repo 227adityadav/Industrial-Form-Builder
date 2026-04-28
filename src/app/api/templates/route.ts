@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connection";
-import { listTemplatesNormalized, upsertTemplate } from "@/lib/db/content";
+import { DuplicateTemplateNameError, listTemplatesNormalized, upsertTemplate } from "@/lib/db/content";
 import { normalizeFormSchema } from "@/lib/form-schema-normalize";
 import type { FormSchema } from "@/types/form-schema";
 
@@ -15,9 +15,20 @@ export async function GET() {
 export async function POST(req: Request) {
   await connectToDatabase();
   const body = (await req.json().catch(() => null)) as Partial<FormSchema> | null;
-  if (!body?.id || !body?.name) {
+  const name = body?.name?.trim();
+  if (!body?.id || !name) {
     return NextResponse.json({ error: "Missing id/name" }, { status: 400 });
   }
-  const record = await upsertTemplate({ ...body, id: body.id, name: body.name });
-  return NextResponse.json({ ok: true, template: record });
+  try {
+    const record = await upsertTemplate({ ...body, id: body.id, name });
+    return NextResponse.json({ ok: true, template: record });
+  } catch (error) {
+    if (error instanceof DuplicateTemplateNameError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "Template name is required") {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Failed to save template" }, { status: 500 });
+  }
 }
