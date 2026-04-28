@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import PWARegister from "@/components/PWARegister";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +18,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Industrial Form Builder",
   description: "Build nested-header industrial forms, collect entries, and review submissions.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Industrial Form Builder",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Industrial Forms",
+  },
+  icons: {
+    icon: "/pwa-icon.svg",
+    apple: "/pwa-icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({
@@ -36,7 +52,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="flex min-h-full flex-col antialiased">{children}</body>
+      <body className="flex min-h-full flex-col antialiased">
+        <PWARegister />
+        {children}
+      </body>
     </html>
   );
 }

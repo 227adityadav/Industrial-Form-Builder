@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Industrial Form Builder maskable icon">
+  <rect width="512" height="512" fill="#0f172a" />
+  <circle cx="256" cy="256" r="194" fill="#1e3a8a" />
+  <rect x="152" y="126" width="208" height="260" rx="24" fill="#f8fafc" />
+  <rect x="176" y="166" width="160" height="18" rx="9" fill="#94a3b8" />
+  <rect x="176" y="206" width="112" height="14" rx="7" fill="#cbd5e1" />
+  <rect x="176" y="236" width="136" height="14" rx="7" fill="#cbd5e1" />
+  <rect x="176" y="266" width="124" height="14" rx="7" fill="#cbd5e1" />
+  <rect x="176" y="296" width="96" height="14" rx="7" fill="#cbd5e1" />
+  <rect x="278" y="286" width="58" height="32" rx="8" fill="#1d4ed8" />
+</svg>

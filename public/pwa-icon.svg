@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Industrial Form Builder icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e3a8a" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+  <rect x="104" y="96" width="304" height="320" rx="26" fill="#f8fafc" />
+  <rect x="136" y="146" width="240" height="24" rx="12" fill="#94a3b8" />
+  <rect x="136" y="198" width="168" height="20" rx="10" fill="#cbd5e1" />
+  <rect x="136" y="242" width="208" height="20" rx="10" fill="#cbd5e1" />
+  <rect x="136" y="286" width="192" height="20" rx="10" fill="#cbd5e1" />
+  <rect x="136" y="330" width="136" height="20" rx="10" fill="#cbd5e1" />
+  <rect x="300" y="324" width="76" height="40" rx="10" fill="#1d4ed8" />
+</svg>
