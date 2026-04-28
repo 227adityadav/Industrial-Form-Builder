@@ -63,15 +63,6 @@ export function AdminLoginClient() {
           {loading ? "Signing in…" : "Sign in"}
         </button>
 
-        <div className="grid grid-cols-2 gap-2">
-          <a className="ui-btn-secondary w-full" href="/admin/folders">
-            Folders
-          </a>
-          <a className="ui-btn-secondary w-full" href="/admin/users">
-            Users
-          </a>
-        </div>
-
         <Link className="ui-btn-ghost justify-center" href="/">
           ← Back to home
         </Link>
