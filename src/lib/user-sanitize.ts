@@ -7,6 +7,7 @@ export type SanitizedUser = {
   createdAt: string;
   updatedAt: string;
   hasDigitalSignature: boolean;
+  digitalSignatureSignerName?: string;
   /** Only when explicitly requested (e.g. single-user load for admin). */
   digitalSignaturePng?: string;
 };
@@ -21,6 +22,7 @@ export function sanitizeUser(u: UserRecord, opts?: { includeSignatureImage?: boo
     createdAt: rest.createdAt,
     updatedAt: rest.updatedAt,
     hasDigitalSignature,
+    digitalSignatureSignerName: rest.digitalSignatureSignerName,
     ...(opts?.includeSignatureImage && rest.digitalSignaturePng
       ? { digitalSignaturePng: rest.digitalSignaturePng }
       : {}),

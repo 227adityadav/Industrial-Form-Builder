@@ -52,6 +52,7 @@ function ReadonlyTopField({ field, value }: { field: TopField; value: unknown })
             <div className="mt-2 text-xs text-zinc-500">
               {new Date(value.signedAt).toLocaleString()}
             </div>
+            {value.signerName ? <div className="mt-1 text-xs text-zinc-500">Signed by: {value.signerName}</div> : null}
           </div>
         </div>
       );

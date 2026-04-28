@@ -12,5 +12,7 @@ export type UserRecord = {
   digitalSignaturePng?: string;
   /** scrypt hash of the signature unlock password (separate from login password). */
   digitalSignaturePasswordHash?: string;
+  /** Display name shown with applied signatures. */
+  digitalSignatureSignerName?: string;
 };
 

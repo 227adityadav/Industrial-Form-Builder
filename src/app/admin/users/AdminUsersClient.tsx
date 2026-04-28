@@ -29,17 +29,27 @@ export function AdminUsersClient({ initialUsers }: Props) {
   const enrollPadRef = React.useRef<SignaturePadHandle>(null);
   const [enrollInk, setEnrollInk] = React.useState(false);
   const [enrollUserId, setEnrollUserId] = React.useState("");
+  const [enrollSignerName, setEnrollSignerName] = React.useState("");
   const [enrollPwd, setEnrollPwd] = React.useState("");
   const [enrollPwd2, setEnrollPwd2] = React.useState("");
   const [enrollLoading, setEnrollLoading] = React.useState(false);
 
-  const operatorUsers = React.useMemo(() => users.filter((u) => u.role === "user"), [users]);
+  const signableUsers = React.useMemo(() => users, [users]);
+  const selectedEnrollUser = React.useMemo(
+    () => signableUsers.find((u) => u.id === enrollUserId) ?? null,
+    [signableUsers, enrollUserId]
+  );
 
   React.useEffect(() => {
-    if (!enrollUserId && operatorUsers.length > 0) {
-      setEnrollUserId(operatorUsers[0]!.id);
+    if (!enrollUserId && signableUsers.length > 0) {
+      setEnrollUserId(signableUsers[0]!.id);
     }
-  }, [enrollUserId, operatorUsers]);
+  }, [enrollUserId, signableUsers]);
+
+  React.useEffect(() => {
+    if (!selectedEnrollUser) return;
+    setEnrollSignerName(selectedEnrollUser.digitalSignatureSignerName?.trim() || selectedEnrollUser.username);
+  }, [selectedEnrollUser]);
 
   async function createLogin() {
     setLoginStatus(null);
@@ -59,12 +69,12 @@ export function AdminUsersClient({ initialUsers }: Props) {
     setEnrollLoading(true);
     setSignatureStatus(null);
     if (!enrollUserId) {
-      setSignatureStatus("Choose a user (operator) for this signature.");
+      setSignatureStatus("Choose a user for this signature.");
       setEnrollLoading(false);
       return;
     }
-    if (!enrollInk || !enrollPwd) {
-      setSignatureStatus("Draw the signature and set the signature password.");
+    if (!enrollInk || !enrollPwd || !enrollSignerName.trim()) {
+      setSignatureStatus("Draw the signature, set the signature password, and enter signer name.");
       setEnrollLoading(false);
       return;
     }
@@ -83,6 +93,7 @@ export function AdminUsersClient({ initialUsers }: Props) {
       userId: enrollUserId,
       signatureImageDataUrl: dataUrl,
       signaturePassword: enrollPwd,
+      signerName: enrollSignerName,
     });
     setEnrollLoading(false);
     if (!r.ok) {
@@ -124,7 +135,7 @@ export function AdminUsersClient({ initialUsers }: Props) {
     <div className="app-page">
       <PageHeader
         title="Users & roles"
-        description="Create logins separately. Enroll digital signatures in the section below—used only when an operator applies a signature on a form."
+        description="Create logins separately. Enroll digital signatures in the section below—used whenever a form template has a digital signature field."
       >
         <a className="ui-btn-secondary" href="/admin/builder">
           ← Builder
@@ -187,6 +198,9 @@ export function AdminUsersClient({ initialUsers }: Props) {
                             Signature enrolled
                           </span>
                         ) : null}
+                        {u.hasDigitalSignature && u.digitalSignatureSignerName ? (
+                          <span className="ml-2 text-[11px] text-zinc-500">Signer: {u.digitalSignatureSignerName}</span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -220,28 +234,38 @@ export function AdminUsersClient({ initialUsers }: Props) {
         <section className="ui-card">
           <h2 className="ui-section-title">Digital signature enrollment</h2>
           <p className="mt-1 text-sm leading-relaxed text-zinc-600">
-            This is separate from login. Choose an <strong className="font-medium text-zinc-800">operator (user)</strong>,
-            draw their signature with mouse or touch, and set the <strong className="font-medium text-zinc-800">signature password</strong>{" "}
-            they will enter on forms to place that image with a timestamp. It is not their login password.
+            This is separate from login. Choose a <strong className="font-medium text-zinc-800">user account</strong>, add the{" "}
+            <strong className="font-medium text-zinc-800">signer name</strong>, draw their signature with mouse or touch, and set
+            the <strong className="font-medium text-zinc-800">signature password</strong> they will enter on forms to place that
+            image with a timestamp. It is not their login password.
           </p>
 
-          {operatorUsers.length === 0 ? (
-            <p className="mt-4 text-sm text-amber-800">Create at least one user with role &quot;user&quot; before enrolling a signature.</p>
+          {signableUsers.length === 0 ? (
+            <p className="mt-4 text-sm text-amber-800">Create at least one user before enrolling a signature.</p>
           ) : (
             <>
               <label className="mt-4 block text-sm font-medium text-zinc-800">
-                Operator
+                User
                 <select
                   className="ui-input mt-1 bg-white"
                   value={enrollUserId}
                   onChange={(e) => setEnrollUserId(e.target.value)}
                 >
-                  {operatorUsers.map((u) => (
+                  {signableUsers.map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.username}
+                      {u.username} ({u.role})
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="mt-3 block text-sm font-medium text-zinc-800">
+                Signer name (shown in signed forms)
+                <input
+                  className="ui-input mt-1"
+                  value={enrollSignerName}
+                  onChange={(e) => setEnrollSignerName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                />
               </label>
 
               <div className="mt-4">

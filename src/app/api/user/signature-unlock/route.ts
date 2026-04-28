@@ -7,7 +7,7 @@ import { getUserByUsernameForSignature } from "@/lib/db/users";
 export const dynamic = "force-dynamic";
 
 /**
- * Operator verifies their enrolled signature password; returns the stored PNG and a fresh timestamp for the submission.
+ * Signed-in user verifies their enrolled signature password; returns the stored PNG and signer details.
  */
 export async function POST(req: Request) {
   await connectToDatabase();
@@ -39,5 +39,6 @@ export async function POST(req: Request) {
     ok: true,
     imageDataUrl: user.digitalSignaturePng,
     signedAt,
+    signerName: (user.digitalSignatureSignerName || session.username || "").trim() || session.username,
   });
 }

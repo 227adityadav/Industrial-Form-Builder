@@ -62,14 +62,16 @@ export async function adminEnrollDigitalSignature(input: {
   userId: string;
   signatureImageDataUrl: string;
   signaturePassword: string;
+  signerName: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!(await requireAdmin())) {
     return { ok: false, error: "Unauthorized" };
   }
   const img = input.signatureImageDataUrl.trim();
   const pwd = input.signaturePassword.trim();
-  if (!img || !pwd) {
-    return { ok: false, error: "Draw a signature and set the signature password." };
+  const signerName = input.signerName.trim();
+  if (!img || !pwd || !signerName) {
+    return { ok: false, error: "Draw a signature, set the signature password, and provide signer name." };
   }
   if (!img.startsWith("data:image/")) {
     return { ok: false, error: "Invalid signature image" };
@@ -83,6 +85,7 @@ export async function adminEnrollDigitalSignature(input: {
     clearDigital: false,
     digitalSignaturePng: img,
     digitalSignaturePasswordHash: hashSignaturePassword(pwd),
+    digitalSignatureSignerName: signerName,
   });
   revalidatePath("/admin/users");
   return { ok: true };

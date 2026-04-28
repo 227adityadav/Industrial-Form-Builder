@@ -24,7 +24,9 @@ function formatTopValue(field: TopField, raw: unknown): string {
   if (field.inputType === "toggle") return raw === true ? "Yes" : "No";
   if (field.inputType === "signature") {
     if (isDigitalSignatureValue(raw)) {
-      return `Digital signature · ${new Date(raw.signedAt).toLocaleString()}`;
+      return raw.signerName
+        ? `Digital signature (${raw.signerName}) · ${new Date(raw.signedAt).toLocaleString()}`
+        : `Digital signature · ${new Date(raw.signedAt).toLocaleString()}`;
     }
     return "";
   }
@@ -212,6 +214,10 @@ function drawFullWidthInfoField(
   if (f.inputType === "signature" && isDigitalSignatureValue(raw)) {
     doc.setFontSize(8);
     doc.setTextColor(82, 82, 91);
+    if (raw.signerName) {
+      doc.text(`Signed by: ${raw.signerName}`, margin, y);
+      y += 4;
+    }
     doc.text(`Signed: ${new Date(raw.signedAt).toLocaleString()}`, margin, y);
     doc.setTextColor(0, 0, 0);
     y += 4;

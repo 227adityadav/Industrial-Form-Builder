@@ -12,6 +12,7 @@ const userSchema = new Schema(
     role: { type: String, required: true, enum: roleEnum },
     digitalSignaturePng: { type: String, required: false },
     digitalSignaturePasswordHash: { type: String, required: false },
+    digitalSignatureSignerName: { type: String, required: false },
     createdAt: { type: String, required: true },
     updatedAt: { type: String, required: true },
   },

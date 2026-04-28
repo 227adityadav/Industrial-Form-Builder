@@ -13,6 +13,7 @@ function toUserRecord(
     updatedAt: string;
     digitalSignaturePng?: string;
     digitalSignaturePasswordHash?: string;
+    digitalSignatureSignerName?: string;
   }
 ): UserRecord {
   if (d.role === "admin") {
@@ -26,6 +27,7 @@ function toUserRecord(
     updatedAt: d.updatedAt,
     digitalSignaturePng: d.digitalSignaturePng,
     digitalSignaturePasswordHash: d.digitalSignaturePasswordHash,
+    digitalSignatureSignerName: d.digitalSignatureSignerName,
   };
 }
 
@@ -83,6 +85,7 @@ export async function createAppUser(input: { username: string; password: string;
     updatedAt: o.updatedAt,
     digitalSignaturePng: o.digitalSignaturePng,
     digitalSignaturePasswordHash: o.digitalSignaturePasswordHash,
+    digitalSignatureSignerName: o.digitalSignatureSignerName,
   });
 }
 
@@ -97,6 +100,7 @@ export async function patchUserSignatureFields(
     clearDigital?: boolean;
     digitalSignaturePng?: string;
     digitalSignaturePasswordHash?: string;
+    digitalSignatureSignerName?: string;
   }
 ) {
   await connectToDatabase();
@@ -104,7 +108,10 @@ export async function patchUserSignatureFields(
   if (next.clearDigital) {
     await UserModel.updateOne(
       { _id: id },
-      { $unset: { digitalSignaturePng: 1, digitalSignaturePasswordHash: 1 }, $set: { updatedAt: now } }
+      {
+        $unset: { digitalSignaturePng: 1, digitalSignaturePasswordHash: 1, digitalSignatureSignerName: 1 },
+        $set: { updatedAt: now },
+      }
     );
     return;
   }
@@ -115,6 +122,7 @@ export async function patchUserSignatureFields(
         $set: {
           digitalSignaturePng: next.digitalSignaturePng,
           digitalSignaturePasswordHash: next.digitalSignaturePasswordHash,
+          digitalSignatureSignerName: next.digitalSignatureSignerName,
           updatedAt: now,
         },
       }

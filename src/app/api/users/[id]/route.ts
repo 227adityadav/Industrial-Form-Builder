@@ -41,6 +41,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     | {
         signatureImageDataUrl?: string | null;
         signaturePassword?: string | null;
+        signatureSignerName?: string | null;
         clearDigitalSignature?: boolean;
       }
     | null;
@@ -64,6 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const sigImg = body?.signatureImageDataUrl?.trim();
   const sigPwd = body?.signaturePassword?.trim();
+  const sigSignerName = body?.signatureSignerName?.trim();
 
   if (sigImg || sigPwd) {
     if (!sigImg || !sigPwd) {
@@ -79,6 +81,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       clearDigital: false,
       digitalSignaturePng: sigImg,
       digitalSignaturePasswordHash: hashSignaturePassword(sigPwd),
+      digitalSignatureSignerName: sigSignerName || existing.username,
     });
   }
 

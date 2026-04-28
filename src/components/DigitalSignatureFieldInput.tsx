@@ -33,6 +33,7 @@ export function DigitalSignatureFieldInput({ value, onChange, required: _require
       error?: string;
       imageDataUrl?: string;
       signedAt?: string;
+      signerName?: string;
     };
     setLoading(false);
     if (!res.ok) {
@@ -43,7 +44,7 @@ export function DigitalSignatureFieldInput({ value, onChange, required: _require
       setError("Invalid response");
       return;
     }
-    onChange({ imageDataUrl: data.imageDataUrl, signedAt: data.signedAt });
+    onChange({ imageDataUrl: data.imageDataUrl, signedAt: data.signedAt, signerName: data.signerName });
     setOpen(false);
     setPassword("");
   }
@@ -73,6 +74,7 @@ export function DigitalSignatureFieldInput({ value, onChange, required: _require
           <div className="mt-2 text-xs text-zinc-500">
             {new Date(value.signedAt).toLocaleString()}
           </div>
+          {value.signerName ? <div className="mt-1 text-xs text-zinc-500">Signed by: {value.signerName}</div> : null}
           <button
             type="button"
             className="mt-2 text-xs font-medium text-zinc-600 underline hover:text-zinc-900"
