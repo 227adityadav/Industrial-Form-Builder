@@ -284,7 +284,16 @@ export async function updateSubmissionById(updated: SubmissionRecord) {
   await connectToDatabase();
   const normalized = normalizeSubmissionId(updated);
   const { id, ...rest } = normalized;
-  await SubmissionModel.replaceOne({ id }, { _id: id, id, ...rest } as object, { upsert: true });
+  const existing = (await SubmissionModel.findOne({ id }, { _id: 1 }).lean().exec()) as
+    | { _id?: unknown }
+    | null;
+  const stableObjectId =
+    existing && typeof existing._id === "string" && existing._id.trim().length > 0
+      ? existing._id
+      : id;
+  await SubmissionModel.replaceOne({ _id: stableObjectId }, { _id: stableObjectId, id, ...rest } as object, {
+    upsert: true,
+  });
 }
 
 // --- refill ---
