@@ -76,9 +76,7 @@ submissionSchema.index(
   { id: 1 },
   {
     unique: true,
-    partialFilterExpression: {
-      $and: [{ id: { $type: "string" } }, { id: { $ne: "" } }],
-    },
+    partialFilterExpression: { id: { $type: "string" } },
   }
 );
 

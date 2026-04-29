@@ -104,9 +104,7 @@ async function repairSubmissionIdsAndIndex(): Promise<void> {
       {
         name: "id_1",
         unique: true,
-        partialFilterExpression: {
-          $and: [{ id: { $type: "string" } }, { id: { $ne: "" } }],
-        },
+        partialFilterExpression: { id: { $type: "string" } },
       }
     );
   }
