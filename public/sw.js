@@ -1,4 +1,4 @@
-const CACHE_NAME = "ifb-static-v1";
+const CACHE_NAME = "ifb-static-v2";
 const OFFLINE_URL = "/";
 
 self.addEventListener("install", (event) => {
@@ -22,6 +22,8 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  // Never cache API responses; always hit network for fresh form/template/submission data.
+  if (requestUrl.pathname.startsWith("/api/")) return;
 
   // Network-first for HTML documents so users see fresh data when online.
   if (event.request.mode === "navigate") {
