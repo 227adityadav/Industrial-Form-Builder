@@ -9,7 +9,7 @@ import { getAuthSession } from "@/lib/session";
 import { upsertRefillNotificationForSubmission } from "@/lib/refill-notification-service";
 import { connectToDatabase } from "@/lib/db/connection";
 import { randomUuid } from "@/lib/random-uuid";
-import { getTemplateById, insertSubmission, listSubmissionsAll } from "@/lib/db/content";
+import { getTemplateById, insertSubmission, listSubmissionsAll, updateSubmissionById } from "@/lib/db/content";
 import { dbErrorMessage } from "@/lib/db/error-message";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,10 @@ export const dynamic = "force-dynamic";
 async function loadTemplate(templateId: string): Promise<FormSchema | null> {
   const raw = await getTemplateById(templateId);
   return raw ? normalizeFormSchema(raw) : null;
+}
+
+function sameFolder(a: string | undefined, b: string | undefined): boolean {
+  return (a ?? "") === (b ?? "");
 }
 
 function coerceRecord(raw: SubmissionRecord): SubmissionRecord {
@@ -156,13 +160,26 @@ export async function POST(req: Request) {
       session.role === "user"
         ? mergeRevealFillGridsForOperator(sanitizeRevealFills(revealFillsRaw, template), template)
         : sanitizeRevealFills(revealFillsRaw, template);
+    const all = (await listSubmissionsAll()).map(coerceRecord);
+    const existingDraft =
+      session.role === "user"
+        ? [...all]
+            .filter(
+              (s) =>
+                s.username === session.username &&
+                s.templateId === body.templateId &&
+                sameFolder(s.folderId, body.folderId) &&
+                normalizeSubmissionStatus(s) === "ongoing"
+            )
+            .sort((a, b) => new Date(b.updatedAt ?? b.submittedAt).getTime() - new Date(a.updatedAt ?? a.submittedAt).getTime())[0]
+        : undefined;
     const record: SubmissionRecord = {
-      id: randomUuid(),
+      id: existingDraft?.id ?? randomUuid(),
       templateId: body.templateId,
       templateSnapshot: template,
       folderId: body.folderId,
       username: session.username,
-      submittedAt: now,
+      submittedAt: existingDraft?.submittedAt ?? now,
       updatedAt: now,
       submissionStatus: status,
       top: body.top ?? {},
@@ -170,7 +187,11 @@ export async function POST(req: Request) {
       footer: body.footer ?? {},
       revealFills: revealFills.length ? revealFills : undefined,
     };
-    await insertSubmission(record);
+    if (existingDraft) {
+      await updateSubmissionById(record);
+    } else {
+      await insertSubmission(record);
+    }
     if (status === "final") {
       await upsertRefillNotificationForSubmission(record);
     }

@@ -21,14 +21,28 @@ export default function OngoingFormsPage() {
     ]);
     const data = (await subRes.json()) as { submissions?: SubmissionRecord[] };
     const tData = (await tRes.json()) as { templates?: TemplateRecord[] };
-    setSubmissions(
-      (data.submissions ?? []).filter(
-        (s) =>
-          normalizeSubmissionStatus(s) === "ongoing" &&
-          typeof s.templateId === "string" &&
-          s.templateId.trim().length > 0
-      )
+    const ongoing = (data.submissions ?? []).filter(
+      (s) =>
+        normalizeSubmissionStatus(s) === "ongoing" &&
+        typeof s.templateId === "string" &&
+        s.templateId.trim().length > 0
     );
+    const byKey = new Map<string, SubmissionRecord>();
+    for (const s of ongoing) {
+      const key = `${s.templateId}::${s.folderId ?? ""}`;
+      const prev = byKey.get(key);
+      const curTs = new Date(s.updatedAt ?? s.submittedAt).getTime();
+      const prevTs = prev ? new Date(prev.updatedAt ?? prev.submittedAt).getTime() : -1;
+      if (!prev || curTs > prevTs) {
+        byKey.set(key, s);
+      }
+    }
+    const deduped = [...byKey.values()].sort(
+      (a, b) =>
+        new Date(b.updatedAt ?? b.submittedAt).getTime() -
+        new Date(a.updatedAt ?? a.submittedAt).getTime()
+    );
+    setSubmissions(deduped);
     setTemplates(Object.fromEntries((tData.templates ?? []).map((t) => [t.id, t.name])));
     setLoading(false);
   }

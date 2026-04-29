@@ -47,6 +47,7 @@ export default function FillFormPage() {
   const revealRefs = React.useRef<Map<string, RevealInstanceEditorHandle>>(new Map());
 
   const [status, setStatus] = React.useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
   const [blockedEdit, setBlockedEdit] = React.useState(false);
   const [existingId, setExistingId] = React.useState<string | null>(null);
   const [priorSubmission, setPriorSubmission] = React.useState<SubmissionRecord | null>(null);
@@ -257,60 +258,71 @@ export default function FillFormPage() {
   }, [id, submissionId, folderId]);
 
   async function persist(values: FormEntryValues, submissionStatus: "ongoing" | "final") {
-    if (!template) return;
-    setStatus("Saving...");
+    if (!template || isSaving) return;
+    setIsSaving(true);
+    try {
+      setStatus("Saving...");
 
-    const collectedFills = collectRevealFillsFromEditors();
-    setRevealFills(collectedFills);
+      const collectedFills = collectRevealFillsFromEditors();
+      setRevealFills(collectedFills);
 
-    const payload = {
-      templateId: template.id,
-      folderId,
-      top: values.top ?? {},
-      grid: gridBySection,
-      footer: values.footer ?? {},
-      revealFills: collectedFills,
-      submissionStatus,
-    };
+      const payload = {
+        templateId: template.id,
+        folderId,
+        top: values.top ?? {},
+        grid: gridBySection,
+        footer: values.footer ?? {},
+        revealFills: collectedFills,
+        submissionStatus,
+      };
 
-    if (existingId) {
-      const res = await fetch(`/api/submissions/${existingId}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          top: payload.top,
-          grid: payload.grid,
-          footer: payload.footer,
-          revealFills: payload.revealFills,
-          submissionStatus,
-        }),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        setStatus(data?.error ?? "Save failed.");
+      if (existingId) {
+        const res = await fetch(`/api/submissions/${existingId}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            top: payload.top,
+            grid: payload.grid,
+            footer: payload.footer,
+            revealFills: payload.revealFills,
+            submissionStatus,
+          }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          setStatus(data?.error ?? "Save failed.");
+          return;
+        }
+      } else {
+        const res = await fetch("/api/submissions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          setStatus(data?.error ?? "Save failed.");
+          return;
+        }
+        const data = (await res.json()) as { submission?: SubmissionRecord };
+        if (data.submission?.id) {
+          setExistingId(data.submission.id);
+          const next = new URLSearchParams();
+          next.set("submissionId", data.submission.id);
+          if (folderId) next.set("folderId", folderId);
+          router.replace(`/forms/${encodeURIComponent(template.id)}?${next.toString()}`);
+        }
+      }
+
+      if (submissionStatus === "final") {
+        setStatus("Final submission recorded.");
+        router.push("/forms");
         return;
       }
-    } else {
-      const res = await fetch("/api/submissions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        setStatus(data?.error ?? "Save failed.");
-        return;
-      }
-      const data = (await res.json()) as { submission?: SubmissionRecord };
-      if (data.submission?.id) setExistingId(data.submission.id);
+      setStatus("Ongoing submission saved. You can continue here or find it under Ongoing.");
+    } finally {
+      setIsSaving(false);
     }
-
-    if (submissionStatus === "final") {
-      setStatus("Final submission recorded.");
-      router.push("/forms");
-      return;
-    }
-    setStatus("Ongoing submission saved. You can continue here or find it under Ongoing.");
   }
 
   return (
@@ -516,6 +528,7 @@ export default function FillFormPage() {
               <button
                 type="button"
                 className="ui-btn-secondary px-6"
+                disabled={isSaving}
                 onClick={() => void form.handleSubmit((v) => persist(v, "ongoing"))()}
               >
                 Ongoing submission
@@ -523,6 +536,7 @@ export default function FillFormPage() {
               <button
                 type="button"
                 className="ui-btn-primary px-6"
+                disabled={isSaving}
                 onClick={() => void form.handleSubmit((v) => persist(v, "final"))()}
               >
                 Final submission
