@@ -156,14 +156,36 @@ export default function FillFormPage() {
       }
 
       if (submissionId) {
-        const [sRes, listRes] = await Promise.all([
-          fetch(`/api/submissions/${submissionId}`, { cache: "no-store" }),
-          fetch("/api/submissions", { cache: "no-store" }),
-        ]);
+        const sRes = await fetch(`/api/submissions/${submissionId}`, { cache: "no-store" });
         if (!sRes.ok) {
-          if (!cancelled) setStatus("Could not load this submission.");
+          const recoverParams = new URLSearchParams({
+            templateId: id,
+            submissionStatus: "ongoing",
+            limit: "1",
+          });
+          if (folderId) recoverParams.set("folderId", folderId);
+          const recoverRes = await fetch(`/api/submissions?${recoverParams.toString()}`, {
+            cache: "no-store",
+          });
+          if (recoverRes.ok) {
+            const recoverData = (await recoverRes.json()) as { submissions?: SubmissionRecord[] };
+            const latest = recoverData.submissions?.[0];
+            if (latest?.id) {
+              const next = new URLSearchParams();
+              next.set("submissionId", latest.id);
+              if (latest.folderId) next.set("folderId", latest.folderId);
+              router.replace(`/forms/${encodeURIComponent(id)}?${next.toString()}`);
+              return;
+            }
+          }
+          if (!cancelled) {
+            setStatus(
+              "Could not load this submission. It may be an old invalid draft link. Please open from Ongoing again."
+            );
+          }
           return;
         }
+        const listRes = await fetch("/api/submissions", { cache: "no-store" });
         if (!listRes.ok) {
           if (!cancelled) setStatus("Could not verify edit permission.");
           return;

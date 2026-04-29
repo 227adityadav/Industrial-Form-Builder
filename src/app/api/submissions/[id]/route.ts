@@ -17,13 +17,26 @@ async function loadTemplate(templateId: string): Promise<FormSchema | null> {
   return raw ? normalizeFormSchema(raw) : null;
 }
 
-function coerceRecord(raw: SubmissionRecord): SubmissionRecord {
+function readSubmissionId(raw: SubmissionRecord): string | null {
+  if (typeof raw.id === "string" && raw.id.trim().length > 0) {
+    return raw.id.trim();
+  }
+  const legacy = (raw as unknown as { _id?: unknown })._id;
+  if (typeof legacy === "string" && legacy.trim().length > 0) {
+    return legacy.trim();
+  }
+  return null;
+}
+
+function coerceRecord(raw: SubmissionRecord): SubmissionRecord | null {
+  const id = readSubmissionId(raw);
+  if (!id) return null;
   const submittedAt = raw.submittedAt;
   const revealFills = Array.isArray(raw.revealFills)
     ? (raw.revealFills as RevealFillInstance[])
     : undefined;
   return {
-    id: raw.id,
+    id,
     templateId: raw.templateId,
     templateSnapshot: raw.templateSnapshot,
     folderId: raw.folderId,
@@ -95,7 +108,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     | null;
 
-  const submissions = (await listSubmissionsAll()).map(coerceRecord);
+  const submissions = (await listSubmissionsAll())
+    .map(coerceRecord)
+    .filter((s): s is SubmissionRecord => s !== null);
   const idx = submissions.findIndex((s) => s.id === id);
   if (idx === -1) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

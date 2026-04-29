@@ -23,13 +23,26 @@ function sameFolder(a: string | undefined, b: string | undefined): boolean {
   return (a ?? "") === (b ?? "");
 }
 
-function coerceRecord(raw: SubmissionRecord): SubmissionRecord {
+function readSubmissionId(raw: SubmissionRecord): string | null {
+  if (typeof raw.id === "string" && raw.id.trim().length > 0) {
+    return raw.id.trim();
+  }
+  const legacy = (raw as unknown as { _id?: unknown })._id;
+  if (typeof legacy === "string" && legacy.trim().length > 0) {
+    return legacy.trim();
+  }
+  return null;
+}
+
+function coerceRecord(raw: SubmissionRecord): SubmissionRecord | null {
+  const id = readSubmissionId(raw);
+  if (!id) return null;
   const submittedAt = raw.submittedAt;
   const revealFills = Array.isArray(raw.revealFills)
     ? (raw.revealFills as RevealFillInstance[])
     : undefined;
   return {
-    id: raw.id,
+    id,
     templateId: raw.templateId,
     templateSnapshot: raw.templateSnapshot,
     folderId: raw.folderId,
@@ -71,7 +84,9 @@ export async function GET(req: Request) {
     const fromMs = fromParam ? Date.parse(fromParam) : NaN;
     const toMs = toParam ? Date.parse(toParam) : NaN;
 
-    const submissions = (await listSubmissionsAll()).map(coerceRecord);
+    const submissions = (await listSubmissionsAll())
+      .map(coerceRecord)
+      .filter((s): s is SubmissionRecord => s !== null);
 
     let filtered = submissions;
 
@@ -160,13 +175,17 @@ export async function POST(req: Request) {
       session.role === "user"
         ? mergeRevealFillGridsForOperator(sanitizeRevealFills(revealFillsRaw, template), template)
         : sanitizeRevealFills(revealFillsRaw, template);
-    const all = (await listSubmissionsAll()).map(coerceRecord);
+    const all = (await listSubmissionsAll())
+      .map(coerceRecord)
+      .filter((s): s is SubmissionRecord => s !== null);
     const existingDraft =
       session.role === "user"
         ? [...all]
             .filter(
               (s) =>
                 s.username === session.username &&
+                typeof s.id === "string" &&
+                s.id.trim().length > 0 &&
                 s.templateId === body.templateId &&
                 sameFolder(s.folderId, body.folderId) &&
                 normalizeSubmissionStatus(s) === "ongoing"
