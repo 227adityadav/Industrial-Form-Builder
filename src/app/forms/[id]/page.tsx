@@ -169,7 +169,15 @@ export default function FillFormPage() {
         const { submission: sub } = (await sRes.json()) as { submission: SubmissionRecord };
         if (cancelled) return;
         if (sub.templateId !== id) {
-          setStatus("This submission belongs to another form.");
+          if (typeof sub.templateId === "string" && sub.templateId.trim().length > 0) {
+            const next = new URLSearchParams();
+            next.set("submissionId", sub.id);
+            if (sub.folderId) next.set("folderId", sub.folderId);
+            const qs = next.toString();
+            router.replace(qs ? `/forms/${encodeURIComponent(sub.templateId)}?${qs}` : `/forms/${encodeURIComponent(sub.templateId)}`);
+            return;
+          }
+          setStatus("This submission is missing its form reference and cannot be opened.");
           return;
         }
 

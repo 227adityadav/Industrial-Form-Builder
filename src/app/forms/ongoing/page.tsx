@@ -21,7 +21,14 @@ export default function OngoingFormsPage() {
     ]);
     const data = (await subRes.json()) as { submissions?: SubmissionRecord[] };
     const tData = (await tRes.json()) as { templates?: TemplateRecord[] };
-    setSubmissions((data.submissions ?? []).filter((s) => normalizeSubmissionStatus(s) === "ongoing"));
+    setSubmissions(
+      (data.submissions ?? []).filter(
+        (s) =>
+          normalizeSubmissionStatus(s) === "ongoing" &&
+          typeof s.templateId === "string" &&
+          s.templateId.trim().length > 0
+      )
+    );
     setTemplates(Object.fromEntries((tData.templates ?? []).map((t) => [t.id, t.name])));
     setLoading(false);
   }
