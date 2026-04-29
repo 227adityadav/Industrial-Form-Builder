@@ -1,4 +1,4 @@
-import type { GridData } from "./form-schema";
+import type { FormSchema, GridData } from "./form-schema";
 
 export type SubmissionStatus = "ongoing" | "final";
 
@@ -20,6 +20,8 @@ export type RevealFillInstance = {
 export type SubmissionRecord = {
   id: string;
   templateId: string;
+  /** Snapshot of template at save time to keep old submissions readable after template edits. */
+  templateSnapshot?: FormSchema;
   folderId?: string;
   username?: string;
   submittedAt: string;

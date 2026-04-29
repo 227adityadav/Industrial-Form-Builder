@@ -27,6 +27,7 @@ function coerceRecord(raw: SubmissionRecord): SubmissionRecord {
   return {
     id: raw.id,
     templateId: raw.templateId,
+    templateSnapshot: raw.templateSnapshot,
     folderId: raw.folderId,
     username: raw.username,
     submittedAt,
@@ -158,6 +159,7 @@ export async function POST(req: Request) {
     const record: SubmissionRecord = {
       id: randomUuid(),
       templateId: body.templateId,
+      templateSnapshot: template,
       folderId: body.folderId,
       username: session.username,
       submittedAt: now,

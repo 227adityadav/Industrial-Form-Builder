@@ -144,7 +144,8 @@ export default function FillFormPage() {
       }
       const data = (await res.json()) as { template: FormSchema };
       if (cancelled) return;
-      setTemplate(data.template);
+      const loadedTemplate = data.template;
+      setTemplate(loadedTemplate);
 
       if (meRes.ok) {
         const me = (await meRes.json()) as { role?: Role };
@@ -181,6 +182,7 @@ export default function FillFormPage() {
           return;
         }
 
+        const templateForSubmission = sub.templateSnapshot ?? loadedTemplate;
         const listData = (await listRes.json()) as { submissions?: SubmissionRecord[] };
         const list = listData.submissions ?? [];
         const byRecency = (a: SubmissionRecord, b: SubmissionRecord) => {
@@ -215,13 +217,14 @@ export default function FillFormPage() {
         }
 
         setExistingId(sub.id);
-        const split = splitSubmissionForEdit(sub, data.template);
+        const split = splitSubmissionForEdit(sub, templateForSubmission);
         form.reset({
           top: split.baseTop as FormEntryValues["top"],
           footer: (sub.footer ?? {}) as FormEntryValues["footer"],
         });
         setGridBySection(split.baseGrid);
         setRevealFills(split.revealFills);
+        setTemplate(templateForSubmission);
       } else {
         form.reset({ top: {}, footer: {} });
         setGridBySection(defaultBaseGridsFromTemplate(data.template));

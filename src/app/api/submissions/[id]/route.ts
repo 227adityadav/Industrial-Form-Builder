@@ -25,6 +25,7 @@ function coerceRecord(raw: SubmissionRecord): SubmissionRecord {
   return {
     id: raw.id,
     templateId: raw.templateId,
+    templateSnapshot: raw.templateSnapshot,
     folderId: raw.folderId,
     username: raw.username,
     submittedAt,
@@ -142,6 +143,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     revealFills: revealFills.length ? revealFills : undefined,
     submissionStatus: nextStatus,
     updatedAt: now,
+    templateSnapshot: template ?? current.templateSnapshot,
   };
 
   await updateSubmissionById(updated);
