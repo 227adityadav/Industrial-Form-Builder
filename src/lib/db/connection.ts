@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import path from "node:path";
+import { mkdir } from "node:fs/promises";
 import { runDataBootstrap } from "@/lib/db/bootstrap";
 
 const globalForMongoose = globalThis as unknown as {
@@ -17,7 +19,11 @@ async function getMongoConnectionString(): Promise<string> {
     }
     if (!globalForMongoose.ifbMongoMemory) {
       const { MongoMemoryServer } = await import("mongodb-memory-server");
-      const server = await MongoMemoryServer.create();
+      const dbPath = path.join(process.cwd(), ".cache", "mongodb");
+      await mkdir(dbPath, { recursive: true });
+      const server = await MongoMemoryServer.create({
+        instance: { dbPath },
+      });
       globalForMongoose.ifbMongoMemory = { uri: server.getUri() };
     }
     return globalForMongoose.ifbMongoMemory.uri;
