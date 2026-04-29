@@ -15,6 +15,7 @@ import type { RefillNotificationRecord } from "@/types/refill-notification";
 import type { SubmissionRecord } from "@/types/submission";
 
 type TemplateRow = FormSchema & { createdAt: string; updatedAt: string };
+type SubmissionDoc = SubmissionRecord & { id: string };
 
 export class DuplicateTemplateNameError extends Error {
   constructor(name: string) {
@@ -238,6 +239,11 @@ export function submissionDocToRecord(d: Record<string, unknown>): SubmissionRec
   return { ...s, id: (d.id as string) ?? (d._id as string) };
 }
 
+function normalizeSubmissionId(input: SubmissionRecord): SubmissionDoc {
+  const id = typeof input.id === "string" && input.id.trim().length > 0 ? input.id : randomUuid();
+  return { ...input, id };
+}
+
 export async function listSubmissionsAll(): Promise<SubmissionRecord[]> {
   await connectToDatabase();
   const raw = (await SubmissionModel.find().lean().exec()) as Record<string, unknown>[];
@@ -255,7 +261,8 @@ export async function getSubmissionById(id: string): Promise<SubmissionRecord | 
 
 export async function insertSubmission(record: SubmissionRecord) {
   await connectToDatabase();
-  const { id, ...rest } = record;
+  const normalized = normalizeSubmissionId(record);
+  const { id, ...rest } = normalized;
   await SubmissionModel.create({ _id: id, id, ...rest } as object);
 }
 
@@ -265,7 +272,8 @@ export async function saveSubmissionsInOrder(list: SubmissionRecord[]) {
   if (list.length === 0) return;
   await SubmissionModel.insertMany(
     list.map((s) => {
-      const { id, ...rest } = s;
+      const normalized = normalizeSubmissionId(s);
+      const { id, ...rest } = normalized;
       return { _id: id, id, ...rest };
     }),
     { ordered: true }
@@ -274,8 +282,9 @@ export async function saveSubmissionsInOrder(list: SubmissionRecord[]) {
 
 export async function updateSubmissionById(updated: SubmissionRecord) {
   await connectToDatabase();
-  const { id, ...rest } = updated;
-  await SubmissionModel.replaceOne({ id }, { _id: id, id, ...rest } as object);
+  const normalized = normalizeSubmissionId(updated);
+  const { id, ...rest } = normalized;
+  await SubmissionModel.replaceOne({ id }, { _id: id, id, ...rest } as object, { upsert: true });
 }
 
 // --- refill ---

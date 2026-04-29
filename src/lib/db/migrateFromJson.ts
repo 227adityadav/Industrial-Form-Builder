@@ -4,6 +4,7 @@ import type { FolderRecord, MasterFolderRecord } from "@/types/folder";
 import type { RefillNotificationRecord } from "@/types/refill-notification";
 import type { SubmissionRecord } from "@/types/submission";
 import { FormTemplateModel, FolderModel, MasterFolderModel, RefillNotificationModel, SubmissionModel } from "@/lib/db/models";
+import { randomUuid } from "@/lib/random-uuid";
 
 type TemplateRow = FormSchema & { createdAt: string; updatedAt: string };
 
@@ -66,8 +67,12 @@ export async function importFromProjectJsonIfEmpty(): Promise<void> {
     );
   }
   if (submissions.length) {
+    const safeSubmissions = submissions.map((s) => {
+      const id = typeof s.id === "string" && s.id.trim().length > 0 ? s.id : randomUuid();
+      return { ...s, id };
+    });
     await SubmissionModel.collection.insertMany(
-      submissions.map((s) => {
+      safeSubmissions.map((s) => {
         const { id, ...rest } = s;
         return { _id: id, id, ...rest } as unknown as Record<string, unknown>;
       }),
