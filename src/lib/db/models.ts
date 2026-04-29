@@ -67,7 +67,9 @@ const masterFolderSchema = new Schema(
 );
 
 const submissionSchema = new Schema(
-  {},
+  {
+    _id: { type: String, required: true },
+  },
   { strict: false, versionKey: false, collection: "submissions" }
 );
 submissionSchema.index({ id: 1 }, { unique: true });
