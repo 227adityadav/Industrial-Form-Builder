@@ -72,7 +72,15 @@ const submissionSchema = new Schema(
   },
   { strict: false, versionKey: false, collection: "submissions" }
 );
-submissionSchema.index({ id: 1 }, { unique: true });
+submissionSchema.index(
+  { id: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      $and: [{ id: { $type: "string" } }, { id: { $ne: "" } }],
+    },
+  }
+);
 
 const refillNotificationSchema = new Schema(
   {},

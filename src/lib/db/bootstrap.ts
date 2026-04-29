@@ -1,7 +1,7 @@
 import { getPasswordForRole } from "@/lib/auth";
 import type { Role } from "@/lib/auth";
 import { importFromProjectJsonIfEmpty } from "@/lib/db/migrateFromJson";
-import { UserModel } from "@/lib/db/models";
+import { SubmissionModel, UserModel } from "@/lib/db/models";
 import { hashPassword } from "@/lib/password";
 import { readJsonFile } from "@/lib/storage";
 import type { UserRecord } from "@/types/user";
@@ -66,7 +66,54 @@ async function seedBuiltInUsers(): Promise<void> {
   }
 }
 
+async function repairSubmissionIdsAndIndex(): Promise<void> {
+  const bad = await SubmissionModel.collection
+    .find(
+      {
+        $or: [{ id: null }, { id: "" }, { id: { $exists: false } }],
+      },
+      { projection: { _id: 1 } }
+    )
+    .toArray();
+
+  if (bad.length > 0) {
+    await SubmissionModel.collection.bulkWrite(
+      bad.map((d) => ({
+        updateOne: {
+          filter: { _id: d._id },
+          update: { $set: { id: String(d._id) } },
+        },
+      }))
+    );
+  }
+
+  const indexes = await SubmissionModel.collection.indexes();
+  const idIdx = indexes.find((i) => i.name === "id_1") as
+    | ({ partialFilterExpression?: unknown } & Record<string, unknown>)
+    | undefined;
+  const hasPartial = Boolean(idIdx?.partialFilterExpression);
+
+  if (!hasPartial) {
+    try {
+      await SubmissionModel.collection.dropIndex("id_1");
+    } catch {
+      // ignore if index does not exist yet
+    }
+    await SubmissionModel.collection.createIndex(
+      { id: 1 },
+      {
+        name: "id_1",
+        unique: true,
+        partialFilterExpression: {
+          $and: [{ id: { $type: "string" } }, { id: { $ne: "" } }],
+        },
+      }
+    );
+  }
+}
+
 export async function runDataBootstrap(): Promise<void> {
   await seedBuiltInUsers();
   await importFromProjectJsonIfEmpty();
+  await repairSubmissionIdsAndIndex();
 }
