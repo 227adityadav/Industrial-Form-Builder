@@ -27,22 +27,12 @@ export default function OngoingFormsPage() {
         typeof s.templateId === "string" &&
         s.templateId.trim().length > 0
     );
-    const byKey = new Map<string, SubmissionRecord>();
-    for (const s of ongoing) {
-      const key = `${s.templateId}::${s.folderId ?? ""}`;
-      const prev = byKey.get(key);
-      const curTs = new Date(s.updatedAt ?? s.submittedAt).getTime();
-      const prevTs = prev ? new Date(prev.updatedAt ?? prev.submittedAt).getTime() : -1;
-      if (!prev || curTs > prevTs) {
-        byKey.set(key, s);
-      }
-    }
-    const deduped = [...byKey.values()].sort(
+    const sorted = [...ongoing].sort(
       (a, b) =>
         new Date(b.updatedAt ?? b.submittedAt).getTime() -
         new Date(a.updatedAt ?? a.submittedAt).getTime()
     );
-    setSubmissions(deduped);
+    setSubmissions(sorted);
     setTemplates(Object.fromEntries((tData.templates ?? []).map((t) => [t.id, t.name])));
     setLoading(false);
   }
