@@ -38,7 +38,8 @@ export default function OngoingFormsPage() {
   }
 
   function displayFormName(s: SubmissionRecord): string {
-    const snapName = s.templateSnapshot?.name?.trim();
+    const snapName =
+      s.templateSnapshot?.id === s.templateId ? s.templateSnapshot?.name?.trim() : "";
     if (snapName) return snapName;
     return templates[s.templateId] ?? s.templateId;
   }

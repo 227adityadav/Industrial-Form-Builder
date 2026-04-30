@@ -17,7 +17,7 @@ function isoToDatetimeLocalValue(iso: string | null | undefined): string {
 type Submission = {
   id: string;
   templateId: string;
-  templateSnapshot?: { name?: string };
+  templateSnapshot?: { id?: string; name?: string };
   folderId?: string;
   username?: string;
   submittedAt: string;
@@ -31,7 +31,10 @@ function displayFormName(
   submission: Submission,
   templateMap: Record<string, string>
 ): string {
-  const snapName = submission.templateSnapshot?.name?.trim();
+  const snapName =
+    submission.templateSnapshot?.id === submission.templateId
+      ? submission.templateSnapshot?.name?.trim()
+      : "";
   if (snapName) return snapName;
   return templateMap[submission.templateId] ?? submission.templateId;
 }

@@ -223,6 +223,12 @@ export default function ManagerSubmissionPage() {
       }
       const data = (await res.json()) as { submission: SubmissionRecord };
       setSubmission(data.submission);
+      const tRes = await fetch(`/api/templates/${data.submission.templateId}`, { cache: "no-store" });
+      if (tRes.ok) {
+        const tData = (await tRes.json()) as { template: FormSchema };
+        setTemplate(tData.template);
+        return;
+      }
       if (
         data.submission.templateSnapshot &&
         data.submission.templateSnapshot.id === data.submission.templateId
@@ -230,14 +236,7 @@ export default function ManagerSubmissionPage() {
         setTemplate(data.submission.templateSnapshot);
         return;
       }
-
-      const tRes = await fetch(`/api/templates/${data.submission.templateId}`, { cache: "no-store" });
-      if (!tRes.ok) {
-        setTemplate(null);
-        return;
-      }
-      const tData = (await tRes.json()) as { template: FormSchema };
-      setTemplate(tData.template);
+      setTemplate(null);
     }
     void load();
   }, [id]);

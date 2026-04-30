@@ -85,3 +85,20 @@ test("repairSubmissionRecords backfills templateSnapshot and default objects", (
   assert.deepEqual(result.records[0]?.top, {});
   assert.deepEqual(result.records[0]?.footer, {});
 });
+
+test("repairSubmissionRecords replaces mismatched templateSnapshot", () => {
+  const wrongSnapshot = mkTemplate("wrong-template", "trial 3");
+  const submission: SubmissionRecord = {
+    id: "s-1",
+    templateId: "t-1",
+    templateSnapshot: wrongSnapshot,
+    submittedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    top: {},
+    grid: null,
+    footer: {},
+  };
+  const result = repairSubmissionRecords([submission], [mkTemplate("t-1", "Target Form")], []);
+  assert.equal(result.records[0]?.templateSnapshot?.id, "t-1");
+  assert.equal(result.records[0]?.templateSnapshot?.name, "Target Form");
+});

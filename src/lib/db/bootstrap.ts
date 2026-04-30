@@ -1,7 +1,7 @@
 import { getPasswordForRole } from "@/lib/auth";
 import type { Role } from "@/lib/auth";
 import { importFromProjectJsonIfEmpty } from "@/lib/db/migrateFromJson";
-import { SubmissionModel, UserModel } from "@/lib/db/models";
+import { FolderModel, FormTemplateModel, SubmissionModel, UserModel } from "@/lib/db/models";
 import { hashPassword } from "@/lib/password";
 import { readJsonFile } from "@/lib/storage";
 import type { UserRecord } from "@/types/user";
@@ -110,8 +110,29 @@ async function repairSubmissionIdsAndIndex(): Promise<void> {
   }
 }
 
+async function cleanupDeprecatedTrial3Template(): Promise<void> {
+  const deprecatedTemplates = await FormTemplateModel.collection
+    .find(
+      { name: { $regex: /^\s*trial\s*3\s*$/i } },
+      { projection: { id: 1 } }
+    )
+    .toArray();
+  const templateIds = deprecatedTemplates
+    .map((row) => row.id)
+    .filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+  if (templateIds.length === 0) return;
+
+  await FormTemplateModel.collection.deleteMany({ id: { $in: templateIds } });
+  await FolderModel.collection.updateMany(
+    { templateIds: { $in: templateIds } },
+    { $pull: { templateIds: { $in: templateIds } } }
+  );
+  await SubmissionModel.collection.deleteMany({ templateId: { $in: templateIds } });
+}
+
 export async function runDataBootstrap(): Promise<void> {
   await seedBuiltInUsers();
   await importFromProjectJsonIfEmpty();
+  await cleanupDeprecatedTrial3Template();
   await repairSubmissionIdsAndIndex();
 }

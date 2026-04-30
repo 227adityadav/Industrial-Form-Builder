@@ -57,7 +57,9 @@ export function repairSubmissionRecords(
     const next: SubmissionRecord = {
       id,
       templateId,
-      templateSnapshot: normalizeFormSchema(raw.templateSnapshot ?? template),
+      templateSnapshot: normalizeFormSchema(
+        raw.templateSnapshot?.id === templateId ? raw.templateSnapshot : template
+      ),
       folderId,
       username: typeof raw.username === "string" ? raw.username : undefined,
       submittedAt,
