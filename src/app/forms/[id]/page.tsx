@@ -257,7 +257,8 @@ export default function FillFormPage() {
           return;
         }
 
-        const templateForSubmission = sub.templateSnapshot ?? loadedTemplate;
+        const templateForSubmission =
+          sub.templateSnapshot?.id === sub.templateId ? sub.templateSnapshot : loadedTemplate;
         const listData = (await listRes.json()) as { submissions?: SubmissionRecord[] };
         const list = listData.submissions ?? [];
         const byRecency = (a: SubmissionRecord, b: SubmissionRecord) => {

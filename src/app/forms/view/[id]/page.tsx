@@ -217,7 +217,10 @@ export default function UserSubmissionViewPage() {
       }
       const data = (await res.json()) as { submission: SubmissionRecord };
       setSubmission(data.submission);
-      if (data.submission.templateSnapshot) {
+      if (
+        data.submission.templateSnapshot &&
+        data.submission.templateSnapshot.id === data.submission.templateId
+      ) {
         setTemplate(data.submission.templateSnapshot);
         return;
       }

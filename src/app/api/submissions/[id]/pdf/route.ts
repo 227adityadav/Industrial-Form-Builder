@@ -47,8 +47,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   const found =
-    submission.templateSnapshot ??
-    ((await getTemplateById(submission.templateId)) as TemplateRecord | null);
+    submission.templateSnapshot?.id === submission.templateId
+      ? submission.templateSnapshot
+      : ((await getTemplateById(submission.templateId)) as TemplateRecord | null);
   if (!found) {
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
