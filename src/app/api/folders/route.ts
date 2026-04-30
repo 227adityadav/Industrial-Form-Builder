@@ -62,6 +62,9 @@ export async function POST(req: Request) {
   if (body.masterFolderIds !== undefined && normalizedMasterIds === null) {
     return NextResponse.json({ error: "masterFolderIds must be a non-empty string array" }, { status: 400 });
   }
+  const templateIdsForSave = normalizedTemplateIds ?? undefined;
+  const allowedUsersForSave = normalizedAllowedUsers ?? undefined;
+  const masterIdsForSave = normalizedMasterIds ?? undefined;
 
   const scheduleError = validateFolderSchedule({
     nextFillDueHours: body.nextFillDueHours,
@@ -83,9 +86,9 @@ export async function POST(req: Request) {
   const folder = await upsertFolder({
     id: body.id,
     name: body.name,
-    templateIds: normalizedTemplateIds,
-    allowedUsernames: normalizedAllowedUsers,
-    masterFolderIds: normalizedMasterIds,
+    templateIds: templateIdsForSave,
+    allowedUsernames: allowedUsersForSave,
+    masterFolderIds: masterIdsForSave,
     nextFillDueHours: body.nextFillDueHours,
     nextFillDueDays: body.nextFillDueDays,
     nextFillDueTime: body.nextFillDueTime,
