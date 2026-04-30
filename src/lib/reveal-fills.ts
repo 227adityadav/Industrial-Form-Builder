@@ -7,8 +7,6 @@ import type { RevealFillInstance, SubmissionRecord } from "@/types/submission";
 import { parseSubmissionGrids } from "@/lib/submission-grids";
 
 export function sectionsForRevealButton(template: FormSchema, revealButtonId: string): FormSection[] {
-  const defs = template.revealButtons ?? [];
-  if (!defs.some((b) => b.id === revealButtonId)) return [];
   return template.sections.filter(
     (s) =>
       (s.kind === "fields" || s.kind === "grid") && s.revealButtonId === revealButtonId
@@ -98,11 +96,19 @@ export function sanitizeRevealFills(
   template: FormSchema
 ): RevealFillInstance[] {
   if (!Array.isArray(raw)) return [];
-  const btnIds = new Set((template.revealButtons ?? []).map((b) => b.id));
+  const btnIdsFromSections = new Set(
+    template.sections
+      .filter((s) => (s.kind === "fields" || s.kind === "grid") && typeof s.revealButtonId === "string")
+      .map((s) => s.revealButtonId as string)
+  );
+  const btnIds = new Set([
+    ...(template.revealButtons ?? []).map((b) => b.id),
+    ...btnIdsFromSections,
+  ]);
   const out: RevealFillInstance[] = [];
   for (const x of raw) {
     if (!isRevealFillRow(x)) continue;
-    if (!btnIds.has(x.revealButtonId)) continue;
+    if (btnIds.size > 0 && !btnIds.has(x.revealButtonId)) continue;
     const grid: Record<string, GridData> = {};
     for (const sec of sectionsForRevealButton(template, x.revealButtonId)) {
       if (sec.kind !== "grid") continue;
