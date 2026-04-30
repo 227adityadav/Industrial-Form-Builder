@@ -63,6 +63,7 @@ async function resetDatabase(): Promise<void> {
 
 async function main(): Promise<void> {
   await loadEnvLocalIfPresent();
+  if (!process.env.NODE_ENV) process.env.NODE_ENV = "development";
   await resetDatabase();
   await resetJsonFiles();
   console.log("Hard reset complete: users, sessions, templates, folders, submissions, and refill records deleted.");
