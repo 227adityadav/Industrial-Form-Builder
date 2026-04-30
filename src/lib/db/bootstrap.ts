@@ -123,9 +123,12 @@ async function cleanupDeprecatedTrial3Template(): Promise<void> {
   if (templateIds.length === 0) return;
 
   await FormTemplateModel.collection.deleteMany({ id: { $in: templateIds } });
+  const removeFromFolders: Record<string, unknown> = {
+    $pull: { templateIds: { $in: templateIds } },
+  };
   await FolderModel.collection.updateMany(
     { templateIds: { $in: templateIds } },
-    { $pull: { templateIds: { $in: templateIds } } }
+    removeFromFolders
   );
   await SubmissionModel.collection.deleteMany({ templateId: { $in: templateIds } });
 }
