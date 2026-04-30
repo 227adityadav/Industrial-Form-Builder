@@ -8,7 +8,13 @@ import { mergeRevealFillGridsForOperator, sanitizeRevealFills } from "@/lib/reve
 import { getAuthSession } from "@/lib/session";
 import { upsertRefillNotificationForSubmission } from "@/lib/refill-notification-service";
 import { connectToDatabase } from "@/lib/db/connection";
-import { getTemplateById, getSubmissionById, listSubmissionsAll, updateSubmissionById } from "@/lib/db/content";
+import {
+  getFolderById,
+  getTemplateById,
+  getSubmissionById,
+  listSubmissionsAll,
+  updateSubmissionById,
+} from "@/lib/db/content";
 import { isPlainRecord } from "@/lib/flow-validation";
 
 export const dynamic = "force-dynamic";
@@ -81,9 +87,25 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { id } = await params;
   const raw = await getSubmissionById(id);
-  const submission = raw ? coerceRecord(raw) : null;
+  let submission = raw ? coerceRecord(raw) : null;
   if (!submission) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (
+    submission.folderId &&
+    submission.templateSnapshot?.id &&
+    submission.templateSnapshot.id !== submission.templateId
+  ) {
+    const folder = await getFolderById(submission.folderId);
+    const snapshotTemplateId = submission.templateSnapshot.id;
+    if (
+      folder &&
+      folder.templateIds.includes(snapshotTemplateId) &&
+      !folder.templateIds.includes(submission.templateId)
+    ) {
+      submission = { ...submission, templateId: snapshotTemplateId };
+      await updateSubmissionById(submission);
+    }
   }
   if (!canUserReadSubmission(session, submission)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
