@@ -161,20 +161,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing templateId" }, { status: 400 });
     }
 
-    const template = await loadTemplate(body.templateId);
-    if (!template) {
+    const latestTemplate = await loadTemplate(body.templateId);
+    if (!latestTemplate) {
       return NextResponse.json({ error: "Template not found" }, { status: 400 });
     }
 
     const status: SubmissionStatus = body.submissionStatus === "ongoing" ? "ongoing" : "final";
     const now = new Date().toISOString();
-    const grid =
-      session.role === "user" ? mergeUserGridWithTemplateLocks(body.grid ?? null, template) : body.grid ?? null;
-    const revealFillsRaw = body.revealFills;
-    const revealFills =
-      session.role === "user"
-        ? mergeRevealFillGridsForOperator(sanitizeRevealFills(revealFillsRaw, template), template)
-        : sanitizeRevealFills(revealFillsRaw, template);
     const all = (await listSubmissionsAll())
       .map(coerceRecord)
       .filter((s): s is SubmissionRecord => s !== null);
@@ -192,10 +185,23 @@ export async function POST(req: Request) {
             )
             .sort((a, b) => new Date(b.updatedAt ?? b.submittedAt).getTime() - new Date(a.updatedAt ?? a.submittedAt).getTime())[0]
         : undefined;
+    const templateForSubmission = existingDraft?.templateSnapshot ?? latestTemplate;
+    const grid =
+      session.role === "user"
+        ? mergeUserGridWithTemplateLocks(body.grid ?? null, templateForSubmission)
+        : body.grid ?? null;
+    const revealFillsRaw = body.revealFills;
+    const revealFills =
+      session.role === "user"
+        ? mergeRevealFillGridsForOperator(
+            sanitizeRevealFills(revealFillsRaw, templateForSubmission),
+            templateForSubmission
+          )
+        : sanitizeRevealFills(revealFillsRaw, templateForSubmission);
     const record: SubmissionRecord = {
       id: existingDraft?.id ?? randomUuid(),
       templateId: body.templateId,
-      templateSnapshot: template,
+      templateSnapshot: templateForSubmission,
       folderId: body.folderId,
       username: session.username,
       submittedAt: existingDraft?.submittedAt ?? now,

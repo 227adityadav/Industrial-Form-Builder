@@ -136,18 +136,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ? body.submissionStatus
       : normalizeSubmissionStatus(current);
 
-  const template = await loadTemplate(current.templateId);
+  const latestTemplate = await loadTemplate(current.templateId);
+  const templateForSubmission = current.templateSnapshot ?? latestTemplate;
   const rawGrid = body?.grid !== undefined ? body.grid : current.grid;
   const grid =
-    session.role === "user" && template
-      ? mergeUserGridWithTemplateLocks(rawGrid, template)
+    session.role === "user" && templateForSubmission
+      ? mergeUserGridWithTemplateLocks(rawGrid, templateForSubmission)
       : rawGrid;
 
   const revealSource = body?.revealFills !== undefined ? body.revealFills : current.revealFills;
-  const revealSanitized = template ? sanitizeRevealFills(revealSource, template) : [];
+  const revealSanitized = templateForSubmission ? sanitizeRevealFills(revealSource, templateForSubmission) : [];
   const revealFills =
-    session.role === "user" && template
-      ? mergeRevealFillGridsForOperator(revealSanitized, template)
+    session.role === "user" && templateForSubmission
+      ? mergeRevealFillGridsForOperator(revealSanitized, templateForSubmission)
       : revealSanitized;
 
   const updated: SubmissionRecord = {
@@ -158,7 +159,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     revealFills: revealFills.length ? revealFills : undefined,
     submissionStatus: nextStatus,
     updatedAt: now,
-    templateSnapshot: template ?? current.templateSnapshot,
+    templateSnapshot: templateForSubmission ?? current.templateSnapshot,
   };
 
   await updateSubmissionById(updated);
