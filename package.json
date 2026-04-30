@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test --import tsx \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -29,6 +30,7 @@
     "eslint-config-next": "16.2.3",
     "mongodb-memory-server": "^9.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }

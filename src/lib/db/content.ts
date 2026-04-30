@@ -158,6 +158,12 @@ export async function deleteFolderById(id: string) {
   await FolderModel.deleteOne({ _id: id });
 }
 
+export async function getFolderById(id: string): Promise<FolderRecord | null> {
+  await connectToDatabase();
+  const raw = (await FolderModel.findOne({ _id: id }).lean()) as { _id: string; [k: string]: unknown } | null;
+  return raw ? normalizeFolderRecord(folderDocToStored(raw)) : null;
+}
+
 export async function listFolderRecordsRaw(): Promise<StoredFolder[]> {
   await connectToDatabase();
   const raw = (await FolderModel.find().lean().exec()) as { _id: string; [k: string]: unknown }[];

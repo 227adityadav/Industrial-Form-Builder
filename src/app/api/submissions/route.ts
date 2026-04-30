@@ -9,8 +9,15 @@ import { getAuthSession } from "@/lib/session";
 import { upsertRefillNotificationForSubmission } from "@/lib/refill-notification-service";
 import { connectToDatabase } from "@/lib/db/connection";
 import { randomUuid } from "@/lib/random-uuid";
-import { getTemplateById, insertSubmission, listSubmissionsAll, updateSubmissionById } from "@/lib/db/content";
+import {
+  getFolderById,
+  getTemplateById,
+  insertSubmission,
+  listSubmissionsAll,
+  updateSubmissionById,
+} from "@/lib/db/content";
 import { dbErrorMessage } from "@/lib/db/error-message";
+import { ensureTemplateAllowedInFolder, isPlainRecord } from "@/lib/flow-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -160,10 +167,30 @@ export async function POST(req: Request) {
     if (!body?.templateId) {
       return NextResponse.json({ error: "Missing templateId" }, { status: 400 });
     }
+    if (body.top !== undefined && !isPlainRecord(body.top)) {
+      return NextResponse.json({ error: "top must be an object" }, { status: 400 });
+    }
+    if (body.footer !== undefined && !isPlainRecord(body.footer)) {
+      return NextResponse.json({ error: "footer must be an object" }, { status: 400 });
+    }
+    if (body.revealFills !== undefined && !Array.isArray(body.revealFills)) {
+      return NextResponse.json({ error: "revealFills must be an array" }, { status: 400 });
+    }
 
     const latestTemplate = await loadTemplate(body.templateId);
     if (!latestTemplate) {
       return NextResponse.json({ error: "Template not found" }, { status: 400 });
+    }
+    const folder =
+      typeof body.folderId === "string" && body.folderId.trim().length > 0
+        ? await getFolderById(body.folderId)
+        : null;
+    if (body.folderId && !folder) {
+      return NextResponse.json({ error: "Folder not found" }, { status: 400 });
+    }
+    const folderTemplateError = ensureTemplateAllowedInFolder(folder, body.templateId);
+    if (folderTemplateError) {
+      return NextResponse.json({ error: folderTemplateError }, { status: 400 });
     }
 
     const status: SubmissionStatus = body.submissionStatus === "ongoing" ? "ongoing" : "final";

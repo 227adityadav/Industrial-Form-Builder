@@ -9,6 +9,7 @@ import { getAuthSession } from "@/lib/session";
 import { upsertRefillNotificationForSubmission } from "@/lib/refill-notification-service";
 import { connectToDatabase } from "@/lib/db/connection";
 import { getTemplateById, getSubmissionById, listSubmissionsAll, updateSubmissionById } from "@/lib/db/content";
+import { isPlainRecord } from "@/lib/flow-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         submissionStatus?: SubmissionStatus;
       }
     | null;
+  if (body?.top !== undefined && !isPlainRecord(body.top)) {
+    return NextResponse.json({ error: "top must be an object" }, { status: 400 });
+  }
+  if (body?.footer !== undefined && !isPlainRecord(body.footer)) {
+    return NextResponse.json({ error: "footer must be an object" }, { status: 400 });
+  }
+  if (body?.revealFills !== undefined && !Array.isArray(body.revealFills)) {
+    return NextResponse.json({ error: "revealFills must be an array" }, { status: 400 });
+  }
 
   const submissions = (await listSubmissionsAll())
     .map(coerceRecord)

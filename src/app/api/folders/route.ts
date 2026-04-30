@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connection";
-import { listFoldersNormalized, upsertFolder } from "@/lib/db/content";
+import { listFoldersNormalized, listTemplatesNormalized, upsertFolder } from "@/lib/db/content";
+import { normalizeIdList, validateFolderSchedule } from "@/lib/flow-validation";
 import { getAuthSession } from "@/lib/session";
 import type { FolderRecord } from "@/types/folder";
 
@@ -46,12 +47,45 @@ export async function POST(req: Request) {
   if (!body?.name?.trim()) {
     return NextResponse.json({ error: "Folder name is required" }, { status: 400 });
   }
+  const normalizedTemplateIds =
+    body.templateIds === undefined ? undefined : normalizeIdList(body.templateIds);
+  if (body.templateIds !== undefined && normalizedTemplateIds === null) {
+    return NextResponse.json({ error: "templateIds must be a non-empty string array" }, { status: 400 });
+  }
+  const normalizedAllowedUsers =
+    body.allowedUsernames === undefined ? undefined : normalizeIdList(body.allowedUsernames);
+  if (body.allowedUsernames !== undefined && normalizedAllowedUsers === null) {
+    return NextResponse.json({ error: "allowedUsernames must be a non-empty string array" }, { status: 400 });
+  }
+  const normalizedMasterIds =
+    body.masterFolderIds === undefined ? undefined : normalizeIdList(body.masterFolderIds);
+  if (body.masterFolderIds !== undefined && normalizedMasterIds === null) {
+    return NextResponse.json({ error: "masterFolderIds must be a non-empty string array" }, { status: 400 });
+  }
+
+  const scheduleError = validateFolderSchedule({
+    nextFillDueHours: body.nextFillDueHours,
+    nextFillDueDays: body.nextFillDueDays,
+    nextFillDueTime: body.nextFillDueTime,
+  });
+  if (scheduleError) {
+    return NextResponse.json({ error: scheduleError }, { status: 400 });
+  }
+
+  if (normalizedTemplateIds && normalizedTemplateIds.length > 0) {
+    const templates = await listTemplatesNormalized();
+    const templateSet = new Set(templates.map((t) => t.id));
+    const missing = normalizedTemplateIds.find((id) => !templateSet.has(id));
+    if (missing) {
+      return NextResponse.json({ error: `Unknown template id: ${missing}` }, { status: 400 });
+    }
+  }
   const folder = await upsertFolder({
     id: body.id,
     name: body.name,
-    templateIds: body.templateIds,
-    allowedUsernames: body.allowedUsernames,
-    masterFolderIds: body.masterFolderIds,
+    templateIds: normalizedTemplateIds,
+    allowedUsernames: normalizedAllowedUsers,
+    masterFolderIds: normalizedMasterIds,
     nextFillDueHours: body.nextFillDueHours,
     nextFillDueDays: body.nextFillDueDays,
     nextFillDueTime: body.nextFillDueTime,
