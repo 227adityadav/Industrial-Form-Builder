@@ -40,6 +40,9 @@ export default function FillFormPage() {
   const id = params.id;
   const folderId = search.get("folderId") ?? undefined;
   const submissionId = search.get("submissionId");
+  const note = search.get("note");
+  const staleDraftIgnoredNote =
+    "An old draft link did not match this folder/template, so it was ignored and a fresh form was opened.";
 
   const [template, setTemplate] = React.useState<FormSchema | null>(null);
   const [gridBySection, setGridBySection] = React.useState<Record<string, GridData>>({});
@@ -127,10 +130,18 @@ export default function FillFormPage() {
   }
 
   React.useEffect(() => {
+    if (note === "stale-draft-ignored") {
+      setStatus(staleDraftIgnoredNote);
+    }
+  }, [note, staleDraftIgnoredNote]);
+
+  React.useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      setStatus(null);
+      if (note !== "stale-draft-ignored") {
+        setStatus(null);
+      }
       setBlockedEdit(false);
       setExistingId(null);
       setPriorSubmission(null);
@@ -214,13 +225,32 @@ export default function FillFormPage() {
         }
         const { submission: sub } = (await sRes.json()) as { submission: SubmissionRecord };
         if (cancelled) return;
-        if (sub.templateId !== id) {
-          if (typeof sub.templateId === "string" && sub.templateId.trim().length > 0) {
+        const hasSubmissionTemplateId =
+          typeof sub.templateId === "string" && sub.templateId.trim().length > 0;
+        const hasFolderContext = typeof folderId === "string" && folderId.trim().length > 0;
+        const folderMismatch =
+          hasFolderContext && typeof sub.folderId === "string" && sub.folderId.trim().length > 0
+            ? sub.folderId !== folderId
+            : false;
+        if (sub.templateId !== id || folderMismatch) {
+          // In folder-driven operator flow, prefer the selected folder/template over stale submission links.
+          if (hasFolderContext) {
+            const next = new URLSearchParams();
+            next.set("folderId", folderId!);
+            next.set("note", "stale-draft-ignored");
+            router.replace(`/forms/${encodeURIComponent(id)}?${next.toString()}`);
+            return;
+          }
+          if (hasSubmissionTemplateId) {
             const next = new URLSearchParams();
             next.set("submissionId", sub.id);
             if (sub.folderId) next.set("folderId", sub.folderId);
             const qs = next.toString();
-            router.replace(qs ? `/forms/${encodeURIComponent(sub.templateId)}?${qs}` : `/forms/${encodeURIComponent(sub.templateId)}`);
+            router.replace(
+              qs
+                ? `/forms/${encodeURIComponent(sub.templateId)}?${qs}`
+                : `/forms/${encodeURIComponent(sub.templateId)}`
+            );
             return;
           }
           setStatus("This submission is missing its form reference and cannot be opened.");
