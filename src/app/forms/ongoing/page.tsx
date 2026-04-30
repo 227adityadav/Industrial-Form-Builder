@@ -47,6 +47,12 @@ export default function OngoingFormsPage() {
     setLoading(false);
   }
 
+  function displayFormName(s: SubmissionRecord): string {
+    const snapName = s.templateSnapshot?.name?.trim();
+    if (snapName) return snapName;
+    return templates[s.templateId] ?? s.templateId;
+  }
+
   React.useEffect(() => {
     void load();
   }, []);
@@ -81,7 +87,7 @@ export default function OngoingFormsPage() {
                   href={`/forms/${s.templateId}?submissionId=${encodeURIComponent(s.id)}${folderQ}`}
                   className="group ui-card transition-all hover:-translate-y-0.5 hover:border-zinc-300/90 hover:shadow-md"
                 >
-                  <div className="text-base font-semibold text-zinc-900">{templates[s.templateId] ?? s.templateId}</div>
+                  <div className="text-base font-semibold text-zinc-900">{displayFormName(s)}</div>
                   <div className="mt-2 text-sm text-zinc-600">
                     Updated {new Date(s.updatedAt ?? s.submittedAt).toLocaleString()}
                   </div>

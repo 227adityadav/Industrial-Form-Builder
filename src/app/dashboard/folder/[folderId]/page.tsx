@@ -9,6 +9,7 @@ import { RefillNotificationsBell } from "@/components/notifications/RefillNotifi
 type Submission = {
   id: string;
   templateId: string;
+  templateSnapshot?: { name?: string };
   folderId?: string;
   username?: string;
   submittedAt: string;
@@ -17,6 +18,15 @@ type Submission = {
 };
 
 type TemplateRecord = { id: string; name: string };
+
+function displayFormName(
+  submission: Submission,
+  templateMap: Record<string, string>
+): string {
+  const snapName = submission.templateSnapshot?.name?.trim();
+  if (snapName) return snapName;
+  return templateMap[submission.templateId] ?? submission.templateId;
+}
 
 export default function DashboardFolderPage() {
   const { folderId } = useParams<{ folderId: string }>();
@@ -105,7 +115,7 @@ export default function DashboardFolderPage() {
                       <tr key={s.id} className="hover:bg-zinc-50/80">
                         <td className="px-4 py-3 text-sm text-zinc-800">{s.username ?? "unknown"}</td>
                         <td className="px-4 py-3 text-sm font-medium text-zinc-900">
-                          {templateMap[s.templateId] ?? s.templateId}
+                          {displayFormName(s, templateMap)}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span
