@@ -203,6 +203,10 @@ export default function DashboardSubmissionPage() {
       }
       const data = (await res.json()) as { submission: SubmissionRecord };
       setSubmission(data.submission);
+      if (data.submission.templateSnapshot) {
+        setTemplate(data.submission.templateSnapshot);
+        return;
+      }
 
       const tRes = await fetch(`/api/templates/${data.submission.templateId}`, { cache: "no-store" });
       if (!tRes.ok) {

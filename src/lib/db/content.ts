@@ -47,13 +47,13 @@ export async function listTemplatesNormalized(): Promise<FormSchema[]> {
 
 export async function getTemplateById(id: string): Promise<FormSchema | null> {
   await connectToDatabase();
-  const t = (await FormTemplateModel.findOne({ id }).lean()) as TemplateRow | null;
+  const t = (await FormTemplateModel.collection.findOne({ id })) as TemplateRow | null;
   return t ? normalizeFormSchema(t) : null;
 }
 
 export async function getTemplateByIdForPdf(id: string): Promise<TemplateRow | null> {
   await connectToDatabase();
-  return (await FormTemplateModel.findOne({ id }).lean()) as TemplateRow | null;
+  return (await FormTemplateModel.collection.findOne({ id })) as TemplateRow | null;
 }
 
 export async function upsertTemplate(body: Partial<FormSchema> & { id: string; name: string }): Promise<TemplateRow> {
@@ -71,20 +71,22 @@ export async function upsertTemplate(body: Partial<FormSchema> & { id: string; n
   if (duplicateByNormalizedName) {
     throw new DuplicateTemplateNameError(normalized.name);
   }
-  const existing = (await FormTemplateModel.findOne({ id: body.id }).lean()) as TemplateRow | null;
+  const existing = (await FormTemplateModel.collection.findOne({ id: body.id })) as TemplateRow | null;
   const record: TemplateRow = {
     ...normalized,
     name: normalized.name.trim(),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
-  await FormTemplateModel.replaceOne({ id: body.id }, record, { upsert: true });
+  await FormTemplateModel.collection.replaceOne({ id: body.id }, record as unknown as Record<string, unknown>, {
+    upsert: true,
+  });
   return record;
 }
 
 export async function deleteTemplateById(id: Id) {
   await connectToDatabase();
-  await FormTemplateModel.deleteOne({ id });
+  await FormTemplateModel.collection.deleteOne({ id });
 }
 
 export async function listTemplateRowsForImport(): Promise<FormSchema[]> {

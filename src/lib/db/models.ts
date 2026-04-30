@@ -35,7 +35,10 @@ sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 /** Full form template document (matches prior JSON shape, including `id` and flexible fields). */
 const formTemplateSchema = new Schema(
-  {},
+  {
+    // Keep `id` explicit so strictQuery does not strip `{ id: ... }` lookups.
+    id: { type: String, required: true, trim: true },
+  },
   { strict: false, versionKey: false, collection: "form_templates" }
 );
 formTemplateSchema.index({ id: 1 }, { unique: true });
