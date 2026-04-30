@@ -135,6 +135,28 @@ export default function FillFormPage() {
       setExistingId(null);
       setPriorSubmission(null);
 
+      if (folderId) {
+        const folderRes = await fetch("/api/folders", { cache: "no-store" });
+        if (!folderRes.ok) {
+          if (!cancelled) setStatus("Could not verify folder access.");
+          return;
+        }
+        const folderData = (await folderRes.json()) as {
+          folders?: Array<{ id: string; templateIds?: string[] }>;
+        };
+        const folder = (folderData.folders ?? []).find((f) => f.id === folderId);
+        if (!folder) {
+          if (!cancelled) setStatus("Folder not found or you do not have access.");
+          return;
+        }
+        if (!(folder.templateIds ?? []).includes(id)) {
+          if (!cancelled) {
+            setStatus("This form is not assigned to the selected folder. Please reopen from the folder list.");
+          }
+          return;
+        }
+      }
+
       const [res, meRes] = await Promise.all([
         fetch(`/api/templates/${id}`, { cache: "no-store" }),
         fetch("/api/auth/me", { cache: "no-store" }),
