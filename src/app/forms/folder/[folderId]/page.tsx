@@ -52,6 +52,12 @@ export default function UserFolderPage() {
         <Link className="ui-btn-secondary" href="/forms">
           ← All folders
         </Link>
+        <Link
+          className="ui-btn-secondary"
+          href={`/forms/history?folderId=${encodeURIComponent(folder.id)}`}
+        >
+          View history
+        </Link>
       </PageHeader>
       <main className="mx-auto w-full max-w-5xl px-6 py-8">
         {templates.length === 0 ? (
@@ -59,16 +65,25 @@ export default function UserFolderPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {templates.map((t) => (
-              <a
+              <div
                 key={t.id}
-                href={`/forms/${t.id}?folderId=${folder.id}`}
-                className="group ui-card transition-all hover:-translate-y-0.5 hover:border-zinc-300/90 hover:shadow-md"
+                className="group ui-card flex flex-col gap-3 transition-all hover:-translate-y-0.5 hover:border-zinc-300/90 hover:shadow-md"
               >
-                <div className="text-base font-semibold text-zinc-900">{t.name}</div>
-                <span className="mt-3 inline-block text-sm font-medium text-emerald-800 group-hover:underline">
-                  Open form →
-                </span>
-              </a>
+                <a href={`/forms/${t.id}?folderId=${folder.id}`} className="block">
+                  <div className="text-base font-semibold text-zinc-900">{t.name}</div>
+                  <span className="mt-3 inline-block text-sm font-medium text-emerald-800 group-hover:underline">
+                    Open form →
+                  </span>
+                </a>
+                <div className="border-t border-zinc-100 pt-3">
+                  <a
+                    href={`/forms/history?folderId=${encodeURIComponent(folder.id)}&templateId=${encodeURIComponent(t.id)}`}
+                    className="text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:underline"
+                  >
+                    Submission history for this form
+                  </a>
+                </div>
+              </div>
             ))}
           </div>
         )}

@@ -46,6 +46,7 @@ export default function ManagerFolderPage() {
   const searchParams = useSearchParams();
   const fromQ = searchParams.get("from");
   const toQ = searchParams.get("to");
+  const templateIdQ = searchParams.get("templateId");
 
   const [folder, setFolder] = React.useState<FolderRecord | null>(null);
   const [submissions, setSubmissions] = React.useState<Submission[]>([]);
@@ -63,6 +64,7 @@ export default function ManagerFolderPage() {
     async function load() {
       const subParams = new URLSearchParams();
       subParams.set("folderId", folderId);
+      if (templateIdQ) subParams.set("templateId", templateIdQ);
       if (fromQ) subParams.set("from", fromQ);
       if (toQ) subParams.set("to", toQ);
       const [foldersRes, submissionsRes, templatesRes] = await Promise.all([
@@ -78,10 +80,12 @@ export default function ManagerFolderPage() {
       setTemplateMap(Object.fromEntries((templatesData.templates ?? []).map((t) => [t.id, t.name])));
     }
     void load();
-  }, [folderId, fromQ, toQ]);
+  }, [folderId, fromQ, toQ, templateIdQ]);
 
   function applyTimestampFilter() {
-    const next = new URLSearchParams();
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("from");
+    next.delete("to");
     if (fromLocal.trim()) {
       const t = new Date(fromLocal).getTime();
       if (!Number.isNaN(t)) next.set("from", new Date(fromLocal).toISOString());
@@ -97,14 +101,26 @@ export default function ManagerFolderPage() {
   function clearTimestampFilter() {
     setFromLocal("");
     setToLocal("");
-    router.replace(pathname);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("from");
+    next.delete("to");
+    const q = next.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname);
+  }
+
+  function setTemplateFilter(nextTemplateId: string | null) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (nextTemplateId) next.set("templateId", nextTemplateId);
+    else next.delete("templateId");
+    const q = next.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname);
   }
 
   return (
     <div className="app-page">
       <PageHeader
         title={folder?.name ?? "Folder"}
-        description="Submissions recorded for this folder."
+        description="Submissions recorded for this folder. Filter by form template to match what operators see when they open history from that form."
       >
         <RefillNotificationsBell />
         <a className="ui-btn-secondary" href="/manager">
@@ -152,12 +168,45 @@ export default function ManagerFolderPage() {
 
         {submissions.length === 0 ? (
           <div className="ui-placeholder">
-            {fromQ || toQ
-              ? "No submissions in this folder match the selected time range."
+            {fromQ || toQ || templateIdQ
+              ? "No submissions in this folder match the current filters."
               : "No submitted forms in this folder yet."}
           </div>
         ) : (
           <div className="space-y-6">
+            <section className="ui-card">
+              <h2 className="ui-section-title">Filter by form template</h2>
+              <p className="mt-1 text-sm text-zinc-600">
+                Limit the table to one assigned form. Leave cleared to show every form in this folder.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    !templateIdQ
+                      ? "border-emerald-700 bg-emerald-800 text-white shadow-sm"
+                      : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 hover:bg-zinc-50"
+                  }`}
+                  onClick={() => setTemplateFilter(null)}
+                >
+                  All forms
+                </button>
+                {(folder?.templateIds ?? []).map((tid) => (
+                  <button
+                    key={tid}
+                    type="button"
+                    className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                      templateIdQ === tid
+                        ? "border-emerald-700 bg-emerald-800 text-white shadow-sm"
+                        : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 hover:bg-zinc-50"
+                    }`}
+                    onClick={() => setTemplateFilter(tid)}
+                  >
+                    {templateMap[tid] ?? tid}
+                  </button>
+                ))}
+              </div>
+            </section>
             <section className="ui-card">
               <h2 className="ui-section-title">Filter by operator</h2>
               <div className="mt-4 flex flex-wrap gap-2">

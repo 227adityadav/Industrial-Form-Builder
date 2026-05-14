@@ -16,6 +16,7 @@ import {
   updateSubmissionById,
 } from "@/lib/db/content";
 import { isPlainRecord } from "@/lib/flow-validation";
+import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 
 export const dynamic = "force-dynamic";
 
@@ -24,19 +25,8 @@ async function loadTemplate(templateId: string): Promise<FormSchema | null> {
   return raw ? normalizeFormSchema(raw) : null;
 }
 
-function readSubmissionId(raw: SubmissionRecord): string | null {
-  if (typeof raw.id === "string" && raw.id.trim().length > 0) {
-    return raw.id.trim();
-  }
-  const legacy = (raw as unknown as { _id?: unknown })._id;
-  if (typeof legacy === "string" && legacy.trim().length > 0) {
-    return legacy.trim();
-  }
-  return null;
-}
-
 function coerceRecord(raw: SubmissionRecord): SubmissionRecord | null {
-  const id = readSubmissionId(raw);
+  const id = readStableSubmissionIdFromBody(raw);
   if (!id) return null;
   const submittedAt = raw.submittedAt;
   const revealFills = Array.isArray(raw.revealFills)
@@ -85,7 +75,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: rawParam } = await params;
+  const id = decodeURIComponent(rawParam).trim();
   const raw = await getSubmissionById(id);
   let submission = raw ? coerceRecord(raw) : null;
   if (!submission) {
@@ -120,7 +111,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: rawPatchId } = await params;
+  const id = decodeURIComponent(rawPatchId).trim();
   const body = (await req.json().catch(() => null)) as
     | {
         top?: Record<string, unknown>;

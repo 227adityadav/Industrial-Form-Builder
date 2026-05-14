@@ -17,6 +17,7 @@ import {
 } from "@/lib/db/content";
 import { dbErrorMessage } from "@/lib/db/error-message";
 import { ensureTemplateAllowedInFolder, isPlainRecord } from "@/lib/flow-validation";
+import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 
 export const dynamic = "force-dynamic";
 
@@ -25,19 +26,8 @@ async function loadTemplate(templateId: string): Promise<FormSchema | null> {
   return raw ? normalizeFormSchema(raw) : null;
 }
 
-function readSubmissionId(raw: SubmissionRecord): string | null {
-  if (typeof raw.id === "string" && raw.id.trim().length > 0) {
-    return raw.id.trim();
-  }
-  const legacy = (raw as unknown as { _id?: unknown })._id;
-  if (typeof legacy === "string" && legacy.trim().length > 0) {
-    return legacy.trim();
-  }
-  return null;
-}
-
 function coerceRecord(raw: SubmissionRecord): SubmissionRecord | null {
-  const id = readSubmissionId(raw);
+  const id = readStableSubmissionIdFromBody(raw);
   if (!id) return null;
   const submittedAt = raw.submittedAt;
   const revealFills = Array.isArray(raw.revealFills)

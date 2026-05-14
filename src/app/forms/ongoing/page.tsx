@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 import type { SubmissionRecord } from "@/types/submission";
 import { normalizeSubmissionStatus } from "@/types/submission";
 
@@ -70,12 +71,13 @@ export default function OngoingFormsPage() {
           <div className="ui-placeholder">No ongoing forms. Use “Ongoing submission” when filling a form to save a draft here.</div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {submissions.map((s) => {
+            {submissions.map((s, index) => {
+              const sid = readStableSubmissionIdFromBody(s) ?? s.id;
               const folderQ = s.folderId ? `&folderId=${encodeURIComponent(s.folderId)}` : "";
               return (
                 <a
-                  key={s.id}
-                  href={`/forms/${s.templateId}?submissionId=${encodeURIComponent(s.id)}${folderQ}`}
+                  key={`${sid}-${s.templateId}-${index}`}
+                  href={`/forms/${encodeURIComponent(s.templateId)}?submissionId=${encodeURIComponent(sid)}${folderQ}`}
                   className="group ui-card transition-all hover:-translate-y-0.5 hover:border-zinc-300/90 hover:shadow-md"
                 >
                   <div className="text-base font-semibold text-zinc-900">{displayFormName(s)}</div>

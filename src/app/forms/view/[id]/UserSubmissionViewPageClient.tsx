@@ -1,16 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { DynamicTable } from "@/components/DynamicTable";
 import { RevealInstanceEditor } from "@/components/RevealInstanceEditor";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { RefillNotificationsBell } from "@/components/notifications/RefillNotificationsBell";
 import { splitSubmissionForEdit } from "@/lib/reveal-fills";
+import { hydrationTemplateForSubmission } from "@/lib/template-for-submission";
 import { isUploadedFileFieldValue } from "@/types/file-field";
 import { isDigitalSignatureValue } from "@/types/signature";
 import type { FooterField, FormSchema, TopField } from "@/types/form-schema";
 import type { SubmissionRecord } from "@/types/submission";
+import { normalizeSubmissionStatus } from "@/types/submission";
 
 function str(v: unknown) {
   return v == null ? "" : String(v);
@@ -20,9 +21,9 @@ function formatTopValue(field: TopField, raw: unknown): string {
   if (raw == null) return "";
   if (field.inputType === "toggle") return raw === true ? "Yes" : "No";
   if (field.inputType === "select") {
-    const str = String(raw);
-    const opt = field.options?.find((o) => o.value === str);
-    return opt?.label ?? str;
+    const s = String(raw);
+    const opt = field.options?.find((o) => o.value === s);
+    return opt?.label ?? s;
   }
   return String(raw);
 }
@@ -189,13 +190,7 @@ function ReadonlyFooterField({ field, value }: { field: FooterField; value: unkn
     return (
       <label className="text-sm font-medium text-zinc-800">
         {field.label}
-        <input
-          className="ui-input-muted"
-          type="datetime-local"
-          value={str(value)}
-          readOnly
-          tabIndex={-1}
-        />
+        <input className="ui-input-muted" type="datetime-local" value={str(value)} readOnly tabIndex={-1} />
       </label>
     );
   }
@@ -208,37 +203,63 @@ function ReadonlyFooterField({ field, value }: { field: FooterField; value: unkn
   );
 }
 
-export default function ManagerSubmissionPage() {
-  const { id } = useParams<{ id: string }>();
+export type UserSubmissionViewPageClientProps = {
+  /** Submission id from the URL (same value used by GET /api/submissions/:id). */
+  submissionId: string;
+};
+
+export default function UserSubmissionViewPageClient({ submissionId }: UserSubmissionViewPageClientProps) {
+  const id = submissionId.trim();
+  const searchParams = useSearchParams();
   const [submission, setSubmission] = React.useState<SubmissionRecord | null>(null);
   const [template, setTemplate] = React.useState<FormSchema | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    let cancelled = false;
+
     async function load() {
-      const res = await fetch(`/api/submissions/${id}`, { cache: "no-store" });
+      setError(null);
+      setSubmission(null);
+      setTemplate(null);
+      if (!id) {
+        if (!cancelled) setError("Submission not found");
+        return;
+      }
+      const res = await fetch(`/api/submissions/${encodeURIComponent(id)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
       if (!res.ok) {
-        setError("Submission not found");
+        if (!cancelled) {
+          setError(res.status === 403 ? "You cannot view this submission." : "Submission not found");
+        }
         return;
       }
       const data = (await res.json()) as { submission: SubmissionRecord };
-      setSubmission(data.submission);
-      const tRes = await fetch(`/api/templates/${data.submission.templateId}`, { cache: "no-store" });
+      const sub = data.submission;
+      if (cancelled) return;
+      setSubmission(sub);
+      const tRes = await fetch(`/api/templates/${encodeURIComponent(sub.templateId)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (cancelled) return;
       if (tRes.ok) {
         const tData = (await tRes.json()) as { template: FormSchema };
-        setTemplate(tData.template);
+        if (!cancelled) setTemplate(hydrationTemplateForSubmission(sub, tData.template));
         return;
       }
-      if (
-        data.submission.templateSnapshot &&
-        data.submission.templateSnapshot.id === data.submission.templateId
-      ) {
-        setTemplate(data.submission.templateSnapshot);
+      if (sub.templateSnapshot) {
+        if (!cancelled) setTemplate(sub.templateSnapshot);
         return;
       }
-      setTemplate(null);
+      if (!cancelled) setTemplate(null);
     }
     void load();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const viewParts = React.useMemo(() => {
@@ -249,6 +270,18 @@ export default function ManagerSubmissionPage() {
   const gridBySection = viewParts?.baseGrid ?? {};
   const baseTop = viewParts?.baseTop ?? submission?.top ?? {};
   const revealList = viewParts?.revealFills ?? [];
+
+  const statusLabel = submission ? normalizeSubmissionStatus(submission) : null;
+
+  const historyHref = React.useMemo(() => {
+    const fd = searchParams.get("folderId") ?? submission?.folderId;
+    const tid = searchParams.get("templateId") ?? submission?.templateId;
+    const q = new URLSearchParams();
+    if (fd) q.set("folderId", fd);
+    if (tid) q.set("templateId", tid);
+    const s = q.toString();
+    return `/forms/history${s ? `?${s}` : ""}`;
+  }, [searchParams, submission?.folderId, submission?.templateId]);
 
   if (error) {
     return (
@@ -270,26 +303,25 @@ export default function ManagerSubmissionPage() {
     <div className="app-page">
       <PageHeader
         title={template?.name ?? "Submission"}
-        description={`${submission.username ?? "unknown"} · ${new Date(submission.updatedAt ?? submission.submittedAt).toLocaleString()} · ${
-          (submission.submissionStatus ?? "final") === "ongoing" ? "Ongoing submission" : "Final submission"
-        }`}
+        description={`${submission.username ?? "unknown"} · ${new Date(submission.submittedAt).toLocaleString()}`}
       >
-        <RefillNotificationsBell />
-        <a className="ui-btn-secondary" href={`/api/submissions/${id}/pdf`}>
-          Download PDF
-        </a>
-        <a
-          className="ui-btn-secondary"
-          href={
-            submission.folderId
-              ? `/manager/folder/${submission.folderId}?templateId=${encodeURIComponent(submission.templateId)}`
-              : "/manager"
-          }
-        >
-          ← Back
+        <a className="ui-btn-secondary" href={historyHref}>
+          ← View history
         </a>
       </PageHeader>
       <main className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
+        {statusLabel ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-zinc-600">Status:</span>
+            <span
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                statusLabel === "ongoing" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"
+              }`}
+            >
+              {statusLabel === "ongoing" ? "Ongoing submission" : "Final submission"}
+            </span>
+          </div>
+        ) : null}
         {!template ? (
           <section className="ui-alert text-zinc-700">
             Template not found for this submission, so it can’t be rendered in form layout.
@@ -378,4 +410,3 @@ export default function ManagerSubmissionPage() {
     </div>
   );
 }
-

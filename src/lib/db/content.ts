@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db/connection";
 import {
   FolderModel,
@@ -12,6 +13,7 @@ import { normalizeFolderRecord, type StoredFolder } from "@/lib/folder-record";
 import type { FormSchema, Id } from "@/types/form-schema";
 import type { FolderRecord, MasterFolderRecord } from "@/types/folder";
 import type { RefillNotificationRecord } from "@/types/refill-notification";
+import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 import type { SubmissionRecord } from "@/types/submission";
 
 type TemplateRow = FormSchema & { createdAt: string; updatedAt: string };
@@ -242,9 +244,11 @@ export async function deleteMasterFolderAndDetach(id: string): Promise<{ ok: boo
 
 // --- submissions ---
 
-export function submissionDocToRecord(d: Record<string, unknown>): SubmissionRecord {
+export function submissionDocToRecord(d: Record<string, unknown>): SubmissionRecord | null {
   const s = d as unknown as SubmissionRecord;
-  return { ...s, id: (d.id as string) ?? (d._id as string) };
+  const id = readStableSubmissionIdFromBody(s);
+  if (!id) return null;
+  return { ...s, id };
 }
 
 function normalizeSubmissionId(input: SubmissionRecord): SubmissionDoc {
@@ -255,14 +259,17 @@ function normalizeSubmissionId(input: SubmissionRecord): SubmissionDoc {
 export async function listSubmissionsAll(): Promise<SubmissionRecord[]> {
   await connectToDatabase();
   const raw = (await SubmissionModel.find().lean().exec()) as Record<string, unknown>[];
-  return raw.map(submissionDocToRecord);
+  return raw.map(submissionDocToRecord).filter((s): s is SubmissionRecord => s !== null);
 }
 
 export async function getSubmissionById(id: string): Promise<SubmissionRecord | null> {
   await connectToDatabase();
+  const trimmed = id.trim();
+  const oidHex = /^[a-fA-F0-9]{24}$/.test(trimmed);
   const d =
-    (await SubmissionModel.findOne({ id }).lean().exec()) ??
-    (await SubmissionModel.findById(id).lean().exec());
+    (await SubmissionModel.findOne({ id: trimmed }).lean().exec()) ??
+    (await SubmissionModel.findOne({ _id: trimmed }).lean().exec()) ??
+    (oidHex ? await SubmissionModel.findById(new mongoose.Types.ObjectId(trimmed)).lean().exec() : null);
   if (!d) return null;
   return submissionDocToRecord(d as Record<string, unknown>);
 }
