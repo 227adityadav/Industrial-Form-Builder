@@ -14,6 +14,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { alignGridData } from "@/lib/grid-data";
 import type { Role } from "@/lib/auth";
 import {
+  OPERATOR_FILL_CONTEXT,
+  SUPEROPERATOR_FILL_CONTEXT,
+  type FillFormContext,
+} from "@/lib/fill-form-context";
+import {
   baseFieldIds,
   baseGridSectionIds,
   defaultBaseGridsFromTemplate,
@@ -40,6 +45,7 @@ export type FillFormPageClientProps = {
   submissionId: string | undefined;
   folderId: string | undefined;
   note: string | undefined;
+  mode?: "operator" | "superoperator";
 };
 
 export default function FillFormPageClient({
@@ -47,7 +53,10 @@ export default function FillFormPageClient({
   submissionId,
   folderId,
   note,
+  mode = "operator",
 }: FillFormPageClientProps) {
+  const fillContext: FillFormContext =
+    mode === "superoperator" ? SUPEROPERATOR_FILL_CONTEXT : OPERATOR_FILL_CONTEXT;
   const router = useRouter();
   const staleDraftIgnoredNote =
     "An old draft link did not match this folder/template, so it was ignored and a fresh form was opened.";
@@ -154,7 +163,7 @@ export default function FillFormPageClient({
       setExistingId(null);
       setPriorSubmission(null);
 
-      if (folderId) {
+      if (folderId && !fillContext.skipFolderValidation) {
         const folderRes = await fetch("/api/folders", { cache: "no-store" });
         if (!folderRes.ok) {
           if (!cancelled) setStatus("Could not verify folder access.");
@@ -177,7 +186,7 @@ export default function FillFormPageClient({
       }
 
       const [res, meRes] = await Promise.all([
-        fetch(`/api/templates/${id}`, { cache: "no-store" }),
+        fetch(fillContext.templatesApi(id), { cache: "no-store" }),
         fetch("/api/auth/me", { cache: "no-store" }),
       ]);
       if (!res.ok) {
@@ -197,7 +206,7 @@ export default function FillFormPageClient({
       }
 
       if (submissionId) {
-        const sRes = await fetch(`/api/submissions/${submissionId}`, { cache: "no-store" });
+        const sRes = await fetch(fillContext.submissionApi(submissionId), { cache: "no-store" });
         if (!sRes.ok) {
           const recoverParams = new URLSearchParams({
             templateId: id,
@@ -205,7 +214,7 @@ export default function FillFormPageClient({
             limit: "1",
           });
           if (folderId) recoverParams.set("folderId", folderId);
-          const recoverRes = await fetch(`/api/submissions?${recoverParams.toString()}`, {
+          const recoverRes = await fetch(`${fillContext.submissionsApi}?${recoverParams.toString()}`, {
             cache: "no-store",
           });
           if (recoverRes.ok) {
@@ -215,7 +224,7 @@ export default function FillFormPageClient({
               const next = new URLSearchParams();
               next.set("submissionId", latest.id);
               if (latest.folderId) next.set("folderId", latest.folderId);
-              router.replace(`/forms/${encodeURIComponent(id)}?${next.toString()}`);
+              router.replace(`${fillContext.formPath(id)}?${next.toString()}`);
               return;
             }
           }
@@ -226,7 +235,7 @@ export default function FillFormPageClient({
           }
           return;
         }
-        const listRes = await fetch("/api/submissions", { cache: "no-store" });
+        const listRes = await fetch(fillContext.submissionsApi, { cache: "no-store" });
         if (!listRes.ok) {
           if (!cancelled) setStatus("Could not verify edit permission.");
           return;
@@ -246,7 +255,7 @@ export default function FillFormPageClient({
             const next = new URLSearchParams();
             next.set("folderId", folderId!);
             next.set("note", "stale-draft-ignored");
-            router.replace(`/forms/${encodeURIComponent(id)}?${next.toString()}`);
+            router.replace(`${fillContext.formPath(id)}?${next.toString()}`);
             return;
           }
           if (hasSubmissionTemplateId) {
@@ -256,8 +265,8 @@ export default function FillFormPageClient({
             const qs = next.toString();
             router.replace(
               qs
-                ? `/forms/${encodeURIComponent(sub.templateId)}?${qs}`
-                : `/forms/${encodeURIComponent(sub.templateId)}`
+                ? `${fillContext.formPath(sub.templateId)}?${qs}`
+                : fillContext.formPath(sub.templateId)
             );
             return;
           }
@@ -277,6 +286,7 @@ export default function FillFormPageClient({
         const formFolderId = sub.folderId ?? folderId;
         const inSameScope = (row: SubmissionRecord) => {
           if (row.templateId !== id) return false;
+          if (fillContext.skipFolderValidation) return true;
           if (formFolderId !== undefined && formFolderId !== "") {
             return row.folderId === formFolderId;
           }
@@ -319,7 +329,7 @@ export default function FillFormPageClient({
         });
         if (folderId) priorParams.set("folderId", folderId);
 
-        const sugRes = await fetch(`/api/submissions?${priorParams.toString()}`, {
+        const sugRes = await fetch(`${fillContext.submissionsApi}?${priorParams.toString()}`, {
           cache: "no-store",
         });
         if (sugRes.ok) {
@@ -359,7 +369,7 @@ export default function FillFormPageClient({
       };
 
       if (existingId) {
-        const res = await fetch(`/api/submissions/${existingId}`, {
+        const res = await fetch(fillContext.submissionApi(existingId), {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -376,7 +386,7 @@ export default function FillFormPageClient({
           return;
         }
       } else {
-        const res = await fetch("/api/submissions", {
+        const res = await fetch(fillContext.submissionsApi, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),
@@ -392,13 +402,13 @@ export default function FillFormPageClient({
           const next = new URLSearchParams();
           next.set("submissionId", data.submission.id);
           if (folderId) next.set("folderId", folderId);
-          router.replace(`/forms/${encodeURIComponent(template.id)}?${next.toString()}`);
+          router.replace(`${fillContext.formPath(template.id)}?${next.toString()}`);
         }
       }
 
       if (submissionStatus === "final") {
         setStatus("Final submission recorded.");
-        router.push("/forms");
+        router.push(fillContext.listHref);
         return;
       }
       setStatus("Ongoing submission saved. You can continue here or find it under Ongoing.");
@@ -411,8 +421,8 @@ export default function FillFormPageClient({
     const q = new URLSearchParams();
     if (folderId) q.set("folderId", folderId);
     q.set("templateId", id);
-    return `/forms/history?${q.toString()}`;
-  }, [folderId, id]);
+    return fillContext.historyPath(q.toString());
+  }, [folderId, id, fillContext]);
 
   return (
     <div className="app-page">
@@ -424,8 +434,8 @@ export default function FillFormPageClient({
             : "Data entry — use Tab to move across cells in the grid. Add reveal rounds as needed, mark each filled entry when done, then submit."
         }
       >
-        <button className="ui-btn-secondary" type="button" onClick={() => router.push("/forms")}>
-          &larr; Folders
+        <button className="ui-btn-secondary" type="button" onClick={() => router.push(fillContext.listHref)}>
+          &larr; {fillContext.listLabel}
         </button>
         <Link className="ui-btn-secondary" href={historyHref}>
           View history
@@ -568,7 +578,9 @@ export default function FillFormPageClient({
                         section.grid.rowCount,
                         section.grid.defaults ?? []
                       )}
-                      lockPrefilledFromTemplate={sessionRole !== "manager" && !blockedEdit}
+                      lockPrefilledFromTemplate={
+                        sessionRole !== "manager" && sessionRole !== null && !blockedEdit
+                      }
                       onChange={
                         blockedEdit
                           ? undefined

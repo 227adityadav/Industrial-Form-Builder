@@ -7,3 +7,12 @@ export async function requireRole(role: Role): Promise<{ ok: true } | { ok: fals
   if (session.role !== role) return { ok: false, status: 403 };
   return { ok: true };
 }
+
+export async function requireAnyRole(
+  ...roles: Role[]
+): Promise<{ ok: true } | { ok: false; status: 401 | 403 }> {
+  const session = await getAuthSession();
+  if (!session.role) return { ok: false, status: 401 };
+  if (!roles.includes(session.role)) return { ok: false, status: 403 };
+  return { ok: true };
+}

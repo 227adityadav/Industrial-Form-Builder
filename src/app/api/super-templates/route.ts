@@ -8,13 +8,13 @@ import {
 import { dbErrorMessage } from "@/lib/db/error-message";
 import { normalizeFormSchema } from "@/lib/form-schema-normalize";
 import { validateFormSchemaIntegrity } from "@/lib/flow-validation";
-import { requireRole } from "@/lib/require-role";
+import { requireAnyRole, requireRole } from "@/lib/require-role";
 import type { FormSchema } from "@/types/form-schema";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const auth = await requireRole("superadmin");
+  const auth = await requireAnyRole("superadmin", "superoperator");
   if (!auth.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: auth.status });
   }

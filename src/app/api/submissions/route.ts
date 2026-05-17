@@ -53,7 +53,12 @@ export async function GET(req: Request) {
   try {
     await connectToDatabase();
     const session = await getAuthSession();
-    if (!session.role || session.role === "admin" || session.role === "superadmin") {
+    if (
+      !session.role ||
+      session.role === "admin" ||
+      session.role === "superadmin" ||
+      session.role === "superoperator"
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -88,6 +88,14 @@ const roles = [
     iconBg: "bg-rose-100 text-rose-900",
   },
   {
+    href: "/superoperator/login",
+    title: "Superoperator",
+    description: "Fill superadmin templates and review your submission history.",
+    icon: RoleIconSuperAdmin,
+    ring: "ring-fuchsia-500/25",
+    iconBg: "bg-fuchsia-100 text-fuchsia-900",
+  },
+  {
     href: "/login",
     title: "Operator",
     description: "Open assigned folders and enter line data.",
@@ -140,7 +148,7 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {roles.map((r) => {
             const Icon = r.icon;
             return (
@@ -167,3 +175,5 @@ export default function Home() {
     </div>
   );
 }
+
+

@@ -10,6 +10,11 @@ import { hydrationTemplateForSubmission } from "@/lib/template-for-submission";
 import { isUploadedFileFieldValue } from "@/types/file-field";
 import { isDigitalSignatureValue } from "@/types/signature";
 import type { FooterField, FormSchema, TopField } from "@/types/form-schema";
+import {
+  OPERATOR_FILL_CONTEXT,
+  SUPEROPERATOR_FILL_CONTEXT,
+  type FillFormContext,
+} from "@/lib/fill-form-context";
 import type { SubmissionRecord } from "@/types/submission";
 import { normalizeSubmissionStatus } from "@/types/submission";
 
@@ -206,9 +211,15 @@ function ReadonlyFooterField({ field, value }: { field: FooterField; value: unkn
 export type UserSubmissionViewPageClientProps = {
   /** Submission id from the URL (same value used by GET /api/submissions/:id). */
   submissionId: string;
+  mode?: "operator" | "superoperator";
 };
 
-export default function UserSubmissionViewPageClient({ submissionId }: UserSubmissionViewPageClientProps) {
+export default function UserSubmissionViewPageClient({
+  submissionId,
+  mode = "operator",
+}: UserSubmissionViewPageClientProps) {
+  const fillContext: FillFormContext =
+    mode === "superoperator" ? SUPEROPERATOR_FILL_CONTEXT : OPERATOR_FILL_CONTEXT;
   const id = submissionId.trim();
   const searchParams = useSearchParams();
   const [submission, setSubmission] = React.useState<SubmissionRecord | null>(null);
@@ -226,7 +237,7 @@ export default function UserSubmissionViewPageClient({ submissionId }: UserSubmi
         if (!cancelled) setError("Submission not found");
         return;
       }
-      const res = await fetch(`/api/submissions/${encodeURIComponent(id)}`, {
+      const res = await fetch(fillContext.submissionApi(id), {
         cache: "no-store",
         credentials: "include",
       });
@@ -240,7 +251,7 @@ export default function UserSubmissionViewPageClient({ submissionId }: UserSubmi
       const sub = data.submission;
       if (cancelled) return;
       setSubmission(sub);
-      const tRes = await fetch(`/api/templates/${encodeURIComponent(sub.templateId)}`, {
+      const tRes = await fetch(fillContext.templatesApi(sub.templateId), {
         cache: "no-store",
         credentials: "include",
       });
@@ -280,8 +291,8 @@ export default function UserSubmissionViewPageClient({ submissionId }: UserSubmi
     if (fd) q.set("folderId", fd);
     if (tid) q.set("templateId", tid);
     const s = q.toString();
-    return `/forms/history${s ? `?${s}` : ""}`;
-  }, [searchParams, submission?.folderId, submission?.templateId]);
+    return fillContext.historyPath(s || undefined);
+  }, [searchParams, submission?.folderId, submission?.templateId, fillContext]);
 
   if (error) {
     return (

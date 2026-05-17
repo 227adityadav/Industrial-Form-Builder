@@ -4,6 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  OPERATOR_FILL_CONTEXT,
+  SUPEROPERATOR_FILL_CONTEXT,
+  type FillFormContext,
+} from "@/lib/fill-form-context";
 import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 import type { SubmissionRecord } from "@/types/submission";
 import { normalizeSubmissionStatus } from "@/types/submission";
@@ -26,25 +31,34 @@ function submissionsQueryFromSearchParams(searchParams: URLSearchParams): string
   return s ? `?${s}` : "";
 }
 
-function historyBackHref(searchParams: URLSearchParams): { href: string; label: string } {
+function historyBackHref(
+  searchParams: URLSearchParams,
+  fillContext: FillFormContext
+): { href: string; label: string } {
   const folderId = searchParams.get("folderId");
   const templateId = searchParams.get("templateId");
   if (folderId && templateId) {
     return {
-      href: `/forms/${encodeURIComponent(templateId)}?folderId=${encodeURIComponent(folderId)}`,
+      href: `${fillContext.formPath(templateId)}?folderId=${encodeURIComponent(folderId)}`,
       label: "← Back to form",
     };
   }
-  if (folderId) {
+  if (folderId && !fillContext.skipFolderValidation) {
     return { href: `/forms/folder/${encodeURIComponent(folderId)}`, label: "← Back to folder" };
   }
   if (templateId) {
-    return { href: `/forms/${encodeURIComponent(templateId)}`, label: "← Open form" };
+    return { href: fillContext.formPath(templateId), label: "← Open form" };
   }
-  return { href: "/forms", label: "← All folders" };
+  return { href: fillContext.listHref, label: `← All ${fillContext.listLabel.toLowerCase()}` };
 }
 
-export default function FormsHistoryPageClient() {
+export type FormsHistoryPageClientProps = {
+  mode?: "operator" | "superoperator";
+};
+
+export default function FormsHistoryPageClient({ mode = "operator" }: FormsHistoryPageClientProps) {
+  const fillContext: FillFormContext =
+    mode === "superoperator" ? SUPEROPERATOR_FILL_CONTEXT : OPERATOR_FILL_CONTEXT;
   const searchParams = useSearchParams();
   const [submissions, setSubmissions] = React.useState<SubmissionRecord[]>([]);
   const [templates, setTemplates] = React.useState<Record<string, string>>({});
@@ -53,9 +67,12 @@ export default function FormsHistoryPageClient() {
   async function load() {
     setLoading(true);
     const subQs = submissionsQueryFromSearchParams(searchParams);
+    const templatesListUrl = fillContext.skipFolderValidation
+      ? "/api/super-templates"
+      : "/api/templates";
     const [subRes, tRes] = await Promise.all([
-      fetch(`/api/submissions${subQs}`, { cache: "no-store" }),
-      fetch("/api/templates", { cache: "no-store" }),
+      fetch(`${fillContext.submissionsApi}${subQs}`, { cache: "no-store" }),
+      fetch(templatesListUrl, { cache: "no-store" }),
     ]);
     const data = (await subRes.json()) as { submissions?: SubmissionRecord[] };
     const tData = (await tRes.json()) as { templates?: TemplateRecord[] };
@@ -71,11 +88,13 @@ export default function FormsHistoryPageClient() {
 
   const scoped =
     Boolean(searchParams.get("folderId")) || Boolean(searchParams.get("templateId"));
-  const back = historyBackHref(searchParams);
+  const back = historyBackHref(searchParams, fillContext);
   const historyScopeForView = submissionsQueryFromSearchParams(searchParams);
   const description = scoped
     ? "Newest first for this view. Only your most recent submission in this list can be edited (including when it is already final). Open history from a folder or form to limit what appears here."
-    : "Newest first across all folders and forms. Only your single most recent submission overall can be edited — including when it is already a final submission.";
+    : fillContext.skipFolderValidation
+      ? "Newest first across all super templates. Only your single most recent submission overall can be edited — including when it is already a final submission."
+      : "Newest first across all folders and forms. Only your single most recent submission overall can be edited — including when it is already a final submission.";
 
   return (
     <div className="app-page">
@@ -105,10 +124,10 @@ export default function FormsHistoryPageClient() {
               const sid = readStableSubmissionIdFromBody(s) ?? s.id;
               const folderQ = s.folderId ? `&folderId=${encodeURIComponent(s.folderId)}` : "";
               const entryHref = sid
-                ? `/forms/${encodeURIComponent(s.templateId)}?submissionId=${encodeURIComponent(sid)}${folderQ}`
+                ? `${fillContext.formPath(s.templateId)}?submissionId=${encodeURIComponent(sid)}${folderQ}`
                 : "#";
               const viewHref = sid
-                ? `/forms/view/${encodeURIComponent(sid)}${historyScopeForView}`
+                ? `${fillContext.viewPath(sid)}${historyScopeForView}`
                 : "#";
               const canEdit = isMostRecent;
               const snapTitle =

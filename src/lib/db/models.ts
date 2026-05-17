@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import mongoose, { Schema } from "mongoose";
 import type { Role } from "@/lib/auth";
 
-const roleEnum: Role[] = ["admin", "superadmin", "user", "manager", "dashboard", "spc"];
+const roleEnum: Role[] = ["admin", "superadmin", "superoperator", "user", "manager", "dashboard", "spc"];
 
 const userSchema = new Schema(
   {
@@ -91,6 +91,20 @@ submissionSchema.index(
   }
 );
 
+const superSubmissionSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+  },
+  { strict: false, versionKey: false, collection: "super_submissions" }
+);
+superSubmissionSchema.index(
+  { id: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { id: { $type: "string" } },
+  }
+);
+
 const refillNotificationSchema = new Schema(
   {},
   { strict: false, versionKey: false, collection: "refill_notifications" }
@@ -106,5 +120,7 @@ export const SuperFormTemplateModel =
 export const FolderModel = mongoose.models.Folder || mongoose.model("Folder", folderSchema);
 export const MasterFolderModel = mongoose.models.MasterFolder || mongoose.model("MasterFolder", masterFolderSchema);
 export const SubmissionModel = mongoose.models.Submission || mongoose.model("Submission", submissionSchema);
+export const SuperSubmissionModel =
+  mongoose.models.SuperSubmission || mongoose.model("SuperSubmission", superSubmissionSchema);
 export const RefillNotificationModel =
   mongoose.models.RefillNotification || mongoose.model("RefillNotification", refillNotificationSchema);

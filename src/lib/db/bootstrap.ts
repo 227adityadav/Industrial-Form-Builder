@@ -16,6 +16,12 @@ const DEFAULT_USERS: { id: string; username: string; role: Role; plain: string }
   { id: "manager", username: "manager", role: "manager", plain: "manager123" },
   { id: "dashboard", username: "dashboard", role: "dashboard", plain: "dashboard123" },
   { id: "spc-default", username: "SPC", role: "spc", plain: "spc123" },
+  {
+    id: "demo-superoperator-001",
+    username: "superop",
+    role: "superoperator",
+    plain: "superoperator123",
+  },
 ];
 
 async function seedBuiltInUsers(): Promise<void> {
@@ -159,9 +165,24 @@ async function ensureSuperAdminUser(): Promise<void> {
   });
 }
 
+async function ensureSuperOperatorUser(): Promise<void> {
+  if (await UserModel.findOne({ role: "superoperator" })) return;
+  const now = new Date().toISOString();
+  const passwordHash = await hashPassword("superoperator123");
+  await UserModel.create({
+    _id: "demo-superoperator-001",
+    username: "superop",
+    passwordHash,
+    role: "superoperator",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 export async function runDataBootstrap(): Promise<void> {
   await seedBuiltInUsers();
   await ensureSuperAdminUser();
+  await ensureSuperOperatorUser();
   await importFromProjectJsonIfEmpty();
   await cleanupDeprecatedTrial3Template();
   await repairSubmissionIdsAndIndex();

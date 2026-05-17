@@ -21,6 +21,9 @@ export function middleware(req: NextRequest) {
   if (pathname === "/spc/login" || pathname.startsWith("/spc/login/")) {
     return NextResponse.next();
   }
+  if (pathname === "/superoperator/login" || pathname.startsWith("/superoperator/login/")) {
+    return NextResponse.next();
+  }
   if (pathname.startsWith("/admin")) {
     const role = req.cookies.get(AUTH_COOKIE)?.value;
     if (!isRole(role) || role !== "admin") {
@@ -81,6 +84,16 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/superoperator")) {
+    const role = req.cookies.get(AUTH_COOKIE)?.value;
+    if (!isRole(role) || role !== "superoperator") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/superoperator/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (pathname.startsWith("/chatai")) {
     const role = req.cookies.get(AUTH_COOKIE)?.value;
     if (!isRole(role) || role !== "manager") {
@@ -105,6 +118,8 @@ export const config = {
     "/spc/:path*",
     "/chatai",
     "/chatai/:path*",
+    "/superoperator",
+    "/superoperator/:path*",
   ],
 };
 

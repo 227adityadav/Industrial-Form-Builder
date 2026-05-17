@@ -1,4 +1,11 @@
-export type Role = "admin" | "superadmin" | "user" | "manager" | "dashboard" | "spc";
+export type Role =
+  | "admin"
+  | "superadmin"
+  | "superoperator"
+  | "user"
+  | "manager"
+  | "dashboard"
+  | "spc";
 
 export const AUTH_COOKIE = "ifb_role";
 export const USERNAME_COOKIE = "ifb_username";
@@ -9,6 +16,7 @@ export function isRole(value: unknown): value is Role {
   return (
     value === "admin" ||
     value === "superadmin" ||
+    value === "superoperator" ||
     value === "user" ||
     value === "manager" ||
     value === "dashboard" ||
@@ -20,6 +28,7 @@ export function getPasswordForRole(role: Role): string {
   // Demo-only. Replace with proper auth + hashing.
   if (role === "admin") return "admin123";
   if (role === "superadmin") return "superadmin123";
+  if (role === "superoperator") return "superoperator123";
   if (role === "manager") return "manager123";
   if (role === "dashboard") return "dashboard123";
   if (role === "spc") return "spc123";

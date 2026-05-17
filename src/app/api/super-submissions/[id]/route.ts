@@ -6,22 +6,20 @@ import { normalizeFormSchema } from "@/lib/form-schema-normalize";
 import { mergeUserGridWithTemplateLocks } from "@/lib/grid-template-locks";
 import { mergeRevealFillGridsForOperator, sanitizeRevealFills } from "@/lib/reveal-fills";
 import { getAuthSession } from "@/lib/session";
-import { upsertRefillNotificationForSubmission } from "@/lib/refill-notification-service";
 import { connectToDatabase } from "@/lib/db/connection";
+import { getSuperTemplateById } from "@/lib/db/super-content";
 import {
-  getFolderById,
-  getTemplateById,
-  getSubmissionById,
-  listSubmissionsAll,
-  updateSubmissionById,
-} from "@/lib/db/content";
+  getSuperSubmissionById,
+  listSuperSubmissionsAll,
+  updateSuperSubmissionById,
+} from "@/lib/db/super-submissions";
 import { isPlainRecord } from "@/lib/flow-validation";
 import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 
 export const dynamic = "force-dynamic";
 
-async function loadTemplate(templateId: string): Promise<FormSchema | null> {
-  const raw = await getTemplateById(templateId);
+async function loadSuperTemplate(templateId: string): Promise<FormSchema | null> {
+  const raw = await getSuperTemplateById(templateId);
   return raw ? normalizeFormSchema(raw) : null;
 }
 
@@ -48,19 +46,12 @@ function coerceRecord(raw: SubmissionRecord): SubmissionRecord | null {
   };
 }
 
-function canUserReadSubmission(session: { role: string | null; username: string | null }, s: SubmissionRecord) {
-  if (session.role === "manager" || session.role === "dashboard") return true;
-  if (session.role === "user" && session.username && s.username === session.username) return true;
-  return false;
-}
-
 function byUpdatedDesc(a: SubmissionRecord, b: SubmissionRecord) {
   const ta = new Date(a.updatedAt ?? a.submittedAt).getTime();
   const tb = new Date(b.updatedAt ?? b.submittedAt).getTime();
   return tb - ta;
 }
 
-/** Final submissions may only be updated when they are the operator’s single newest record; ongoing drafts stay editable. */
 function isUsersMostRecentSubmission(all: SubmissionRecord[], current: SubmissionRecord): boolean {
   const mine = all.filter((s) => s.username === current.username);
   if (mine.length === 0) return false;
@@ -71,39 +62,18 @@ function isUsersMostRecentSubmission(all: SubmissionRecord[], current: Submissio
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectToDatabase();
   const session = await getAuthSession();
-  if (
-    !session.role ||
-    session.role === "admin" ||
-    session.role === "superadmin" ||
-    session.role === "superoperator"
-  ) {
+  if (session.role !== "superoperator") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id: rawParam } = await params;
   const id = decodeURIComponent(rawParam).trim();
-  const raw = await getSubmissionById(id);
-  let submission = raw ? coerceRecord(raw) : null;
+  const raw = await getSuperSubmissionById(id);
+  const submission = raw ? coerceRecord(raw) : null;
   if (!submission) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (
-    submission.folderId &&
-    submission.templateSnapshot?.id &&
-    submission.templateSnapshot.id !== submission.templateId
-  ) {
-    const folder = await getFolderById(submission.folderId);
-    const snapshotTemplateId = submission.templateSnapshot.id;
-    if (
-      folder &&
-      folder.templateIds.includes(snapshotTemplateId) &&
-      !folder.templateIds.includes(submission.templateId)
-    ) {
-      submission = { ...submission, templateId: snapshotTemplateId };
-      await updateSubmissionById(submission);
-    }
-  }
-  if (!canUserReadSubmission(session, submission)) {
+  if (submission.username !== session.username) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return NextResponse.json({ submission });
@@ -112,7 +82,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectToDatabase();
   const session = await getAuthSession();
-  if ((session.role !== "user" && session.role !== "manager") || !session.username) {
+  if (session.role !== "superoperator" || !session.username) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -137,7 +107,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "revealFills must be an array" }, { status: 400 });
   }
 
-  const submissions = (await listSubmissionsAll())
+  const submissions = (await listSuperSubmissionsAll())
     .map(coerceRecord)
     .filter((s): s is SubmissionRecord => s !== null);
   const idx = submissions.findIndex((s) => s.id === id);
@@ -165,20 +135,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ? body.submissionStatus
       : normalizeSubmissionStatus(current);
 
-  const latestTemplate = await loadTemplate(current.templateId);
+  const latestTemplate = await loadSuperTemplate(current.templateId);
   const templateForSubmission = current.templateSnapshot ?? latestTemplate;
   const rawGrid = body?.grid !== undefined ? body.grid : current.grid;
   const grid =
-    session.role === "user" && templateForSubmission
+    templateForSubmission && rawGrid !== undefined
       ? mergeUserGridWithTemplateLocks(rawGrid, templateForSubmission)
       : rawGrid;
 
   const revealSource = body?.revealFills !== undefined ? body.revealFills : current.revealFills;
   const revealSanitized = templateForSubmission ? sanitizeRevealFills(revealSource, templateForSubmission) : [];
-  const revealFills =
-    session.role === "user" && templateForSubmission
-      ? mergeRevealFillGridsForOperator(revealSanitized, templateForSubmission)
-      : revealSanitized;
+  const revealFills = templateForSubmission
+    ? mergeRevealFillGridsForOperator(revealSanitized, templateForSubmission)
+    : revealSanitized;
 
   const updated: SubmissionRecord = {
     ...current,
@@ -191,9 +160,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     templateSnapshot: templateForSubmission ?? current.templateSnapshot,
   };
 
-  await updateSubmissionById(updated);
-  if (nextStatus === "final") {
-    await upsertRefillNotificationForSubmission(updated);
-  }
+  await updateSuperSubmissionById(updated);
   return NextResponse.json({ ok: true, submission: updated });
 }
