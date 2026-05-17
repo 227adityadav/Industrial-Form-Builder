@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import mongoose, { Schema } from "mongoose";
 import type { Role } from "@/lib/auth";
 
-const roleEnum: Role[] = ["admin", "user", "manager", "dashboard", "spc"];
+const roleEnum: Role[] = ["admin", "superadmin", "user", "manager", "dashboard", "spc"];
 
 const userSchema = new Schema(
   {
@@ -42,6 +42,14 @@ const formTemplateSchema = new Schema(
   { strict: false, versionKey: false, collection: "form_templates" }
 );
 formTemplateSchema.index({ id: 1 }, { unique: true });
+
+const superFormTemplateSchema = new Schema(
+  {
+    id: { type: String, required: true, trim: true },
+  },
+  { strict: false, versionKey: false, collection: "super_form_templates" }
+);
+superFormTemplateSchema.index({ id: 1 }, { unique: true });
 
 const folderSchema = new Schema(
   {
@@ -93,6 +101,8 @@ export const UserModel = mongoose.models.User || mongoose.model("User", userSche
 export const SessionModel = mongoose.models.Session || mongoose.model("Session", sessionSchema, "sessions");
 export const FormTemplateModel =
   mongoose.models.FormTemplate || mongoose.model("FormTemplate", formTemplateSchema);
+export const SuperFormTemplateModel =
+  mongoose.models.SuperFormTemplate || mongoose.model("SuperFormTemplate", superFormTemplateSchema);
 export const FolderModel = mongoose.models.Folder || mongoose.model("Folder", folderSchema);
 export const MasterFolderModel = mongoose.models.MasterFolder || mongoose.model("MasterFolder", masterFolderSchema);
 export const SubmissionModel = mongoose.models.Submission || mongoose.model("Submission", submissionSchema);

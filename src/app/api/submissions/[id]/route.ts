@@ -71,7 +71,7 @@ function isUsersMostRecentSubmission(all: SubmissionRecord[], current: Submissio
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectToDatabase();
   const session = await getAuthSession();
-  if (!session.role || session.role === "admin") {
+  if (!session.role || session.role === "admin" || session.role === "superadmin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -3,7 +3,12 @@ import { AUTH_COOKIE, isRole, SESSION_COOKIE, type Role, USERNAME_COOKIE } from 
 import { useSecureSessionCookies } from "@/lib/cookie-secure";
 import { connectToDatabase } from "@/lib/db/connection";
 import { createSessionRecord } from "@/lib/db/sessions";
-import { findAdminUser, findUserByUsernameAndRole, verifyUserPassword } from "@/lib/db/users";
+import {
+  findAdminUser,
+  findSuperAdminUser,
+  findUserByUsernameAndRole,
+  verifyUserPassword,
+} from "@/lib/db/users";
 import { getSessionMaxAgeMs } from "@config/settings";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +92,25 @@ export async function POST(req: Request) {
       role: "admin",
     });
     return jsonWithSession(req, secureCookies, token, "admin", { ok: true });
+  }
+
+  if (role === "superadmin") {
+    const superadmin = await findSuperAdminUser();
+    if (!superadmin || !superadmin.passwordHash) {
+      authApiLog("reject", { reason: "superadmin_not_found", role: "superadmin" });
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+    const ok = await verifyUserPassword(password, String(superadmin.passwordHash));
+    if (!ok) {
+      authApiLog("reject", { reason: "bad_password", role: "superadmin" });
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+    const token = await createSessionRecord({
+      userId: String(superadmin._id),
+      username: String(superadmin.username),
+      role: "superadmin",
+    });
+    return jsonWithSession(req, secureCookies, token, "superadmin", { ok: true });
   }
 
   if (!rawUsername) {

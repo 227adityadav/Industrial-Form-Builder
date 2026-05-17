@@ -78,7 +78,7 @@ export async function adminEnrollDigitalSignature(input: {
   }
   await connectToDatabase();
   const row = await findUserById(input.userId);
-  if (!row || String(row.role) === "admin") {
+  if (!row || String(row.role) === "admin" || String(row.role) === "superadmin") {
     return { ok: false, error: "User not found" };
   }
   await patchUserSignatureFields(input.userId, {

@@ -1,3 +1,15 @@
+function RoleIconSuperAdmin() {
+  return (
+    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 0 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+      />
+    </svg>
+  );
+}
+
 function RoleIconAdmin() {
   return (
     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
@@ -68,6 +80,14 @@ const roles = [
     iconBg: "bg-amber-100 text-amber-800",
   },
   {
+    href: "/superadmin/login",
+    title: "Superadmin",
+    description: "Design super templates, separate from admin templates.",
+    icon: RoleIconSuperAdmin,
+    ring: "ring-rose-500/25",
+    iconBg: "bg-rose-100 text-rose-900",
+  },
+  {
     href: "/login",
     title: "Operator",
     description: "Open assigned folders and enter line data.",
@@ -120,7 +140,7 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {roles.map((r) => {
             const Icon = r.icon;
             return (

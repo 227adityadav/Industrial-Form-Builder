@@ -16,8 +16,8 @@ function toUserRecord(
     digitalSignatureSignerName?: string;
   }
 ): UserRecord {
-  if (d.role === "admin") {
-    throw new Error("toUserRecord: admin is not an app user row");
+  if (d.role === "admin" || d.role === "superadmin") {
+    throw new Error("toUserRecord: privileged login is not an app user row");
   }
   return {
     id: d._id,
@@ -47,7 +47,9 @@ export async function findUserById(id: string) {
 export async function getAppUserRecordById(id: string): Promise<UserRecord | null> {
   const u = await findUserById(id);
   if (!u) return null;
-  if (String((u as { role: string }).role) === "admin") return null;
+  if (String((u as { role: string }).role) === "admin" || String((u as { role: string }).role) === "superadmin") {
+    return null;
+  }
   return toUserRecord(u as Parameters<typeof toUserRecord>[0]);
 }
 
@@ -59,6 +61,11 @@ export async function findUserByUsernameAndRole(username: string, role: Role) {
 export async function findAdminUser() {
   await connectToDatabase();
   return UserModel.findOne({ role: "admin" }).lean();
+}
+
+export async function findSuperAdminUser() {
+  await connectToDatabase();
+  return UserModel.findOne({ role: "superadmin" }).lean();
 }
 
 export async function verifyUserPassword(plain: string, passwordHash: string) {

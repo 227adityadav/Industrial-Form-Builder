@@ -50,7 +50,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (String(existing.role) === "admin") {
+  if (String(existing.role) === "admin" || String(existing.role) === "superadmin") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

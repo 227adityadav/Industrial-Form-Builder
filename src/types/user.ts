@@ -5,7 +5,7 @@ export type UserRecord = {
   username: string;
   /** Only present in legacy file imports; never returned from APIs. */
   password?: string;
-  role: Exclude<Role, "admin">;
+  role: Exclude<Role, "admin" | "superadmin">;
   createdAt: string;
   updatedAt: string;
   /** PNG data URL drawn at enrollment (admin users UI). */

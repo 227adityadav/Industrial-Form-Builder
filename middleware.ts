@@ -9,6 +9,9 @@ export function middleware(req: NextRequest) {
   if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
     return NextResponse.next();
   }
+  if (pathname === "/superadmin/login" || pathname.startsWith("/superadmin/login/")) {
+    return NextResponse.next();
+  }
   if (pathname === "/manager/login" || pathname.startsWith("/manager/login/")) {
     return NextResponse.next();
   }
@@ -23,6 +26,16 @@ export function middleware(req: NextRequest) {
     if (!isRole(role) || role !== "admin") {
       const url = req.nextUrl.clone();
       url.pathname = "/admin/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (pathname.startsWith("/superadmin")) {
+    const role = req.cookies.get(AUTH_COOKIE)?.value;
+    if (!isRole(role) || role !== "superadmin") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/superadmin/login";
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }
@@ -84,6 +97,7 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
+    "/superadmin/:path*",
     "/forms/:path*",
     "/manager/:path*",
     "/dashboard/:path*",

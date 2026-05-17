@@ -8,6 +8,7 @@ import type { UserRecord } from "@/types/user";
 
 const DEFAULT_USERS: { id: string; username: string; role: Role; plain: string }[] = [
   { id: "admin", username: "admin", role: "admin", plain: "admin123" },
+  { id: "superadmin", username: "superadmin", role: "superadmin", plain: "superadmin123" },
   { id: "df17a049-69a7-4c70-b647-88a752e20d8c", username: "machine", role: "user", plain: "machine123" },
   { id: "demo-operator-001", username: "demo", role: "user", plain: "user123" },
   { id: "2b3c82ff-a9f9-40b2-8eeb-95ba4028d79c", username: "aditya", role: "user", plain: "aditya123" },
@@ -46,6 +47,17 @@ async function seedBuiltInUsers(): Promise<void> {
         username: "admin",
         passwordHash: h,
         role: "admin",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    if (!(await UserModel.findOne({ role: "superadmin" }))) {
+      const h = await hashPassword(process.env.INITIAL_SUPERADMIN_PASSWORD?.trim() || "superadmin123");
+      await UserModel.create({
+        _id: "superadmin",
+        username: "superadmin",
+        passwordHash: h,
+        role: "superadmin",
         createdAt: now,
         updatedAt: now,
       });
@@ -133,8 +145,23 @@ async function cleanupDeprecatedTrial3Template(): Promise<void> {
   await SubmissionModel.collection.deleteMany({ templateId: { $in: templateIds } });
 }
 
+async function ensureSuperAdminUser(): Promise<void> {
+  if (await UserModel.findOne({ role: "superadmin" })) return;
+  const now = new Date().toISOString();
+  const passwordHash = await hashPassword(process.env.INITIAL_SUPERADMIN_PASSWORD?.trim() || "superadmin123");
+  await UserModel.create({
+    _id: "superadmin",
+    username: "superadmin",
+    passwordHash,
+    role: "superadmin",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 export async function runDataBootstrap(): Promise<void> {
   await seedBuiltInUsers();
+  await ensureSuperAdminUser();
   await importFromProjectJsonIfEmpty();
   await cleanupDeprecatedTrial3Template();
   await repairSubmissionIdsAndIndex();
