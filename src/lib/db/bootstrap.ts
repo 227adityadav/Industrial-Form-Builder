@@ -1,7 +1,7 @@
 import { getPasswordForRole } from "@/lib/auth";
 import type { Role } from "@/lib/auth";
 import { importFromProjectJsonIfEmpty } from "@/lib/db/migrateFromJson";
-import { FolderModel, FormTemplateModel, SubmissionModel, UserModel } from "@/lib/db/models";
+import { FolderModel, FormTemplateModel, SubmissionModel, SuperSubmissionModel, UserModel } from "@/lib/db/models";
 import { hashPassword } from "@/lib/password";
 import { readJsonFile } from "@/lib/storage";
 import type { UserRecord } from "@/types/user";
@@ -179,6 +179,50 @@ async function ensureSuperOperatorUser(): Promise<void> {
   });
 }
 
+async function repairSuperSubmissionIdsAndIndex(): Promise<void> {
+  const bad = await SuperSubmissionModel.collection
+    .find(
+      {
+        $or: [{ id: null }, { id: "" }, { id: { $exists: false } }],
+      },
+      { projection: { _id: 1 } }
+    )
+    .toArray();
+
+  if (bad.length > 0) {
+    await SuperSubmissionModel.collection.bulkWrite(
+      bad.map((d) => ({
+        updateOne: {
+          filter: { _id: d._id },
+          update: { $set: { id: String(d._id) } },
+        },
+      }))
+    );
+  }
+
+  const indexes = await SuperSubmissionModel.collection.indexes();
+  const idIdx = indexes.find((i) => i.name === "id_1") as
+    | ({ partialFilterExpression?: unknown } & Record<string, unknown>)
+    | undefined;
+  const hasPartial = Boolean(idIdx?.partialFilterExpression);
+
+  if (!hasPartial) {
+    try {
+      await SuperSubmissionModel.collection.dropIndex("id_1");
+    } catch {
+      // ignore if index does not exist yet
+    }
+    await SuperSubmissionModel.collection.createIndex(
+      { id: 1 },
+      {
+        name: "id_1",
+        unique: true,
+        partialFilterExpression: { id: { $type: "string" } },
+      }
+    );
+  }
+}
+
 export async function runDataBootstrap(): Promise<void> {
   await seedBuiltInUsers();
   await ensureSuperAdminUser();
@@ -186,4 +230,5 @@ export async function runDataBootstrap(): Promise<void> {
   await importFromProjectJsonIfEmpty();
   await cleanupDeprecatedTrial3Template();
   await repairSubmissionIdsAndIndex();
+  await repairSuperSubmissionIdsAndIndex();
 }

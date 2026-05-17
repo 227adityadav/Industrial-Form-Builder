@@ -21,6 +21,21 @@ function byUpdatedDesc(a: SubmissionRecord, b: SubmissionRecord) {
   return tb - ta;
 }
 
+/** Newest submission id per template (first seen in recency-sorted list). */
+function newestSubmissionIdByTemplate(submissions: SubmissionRecord[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const s of submissions) {
+    const sid = readStableSubmissionIdFromBody(s) ?? s.id;
+    if (!sid || map.has(s.templateId)) continue;
+    map.set(s.templateId, sid);
+  }
+  return map;
+}
+
+function shortSubmissionId(id: string): string {
+  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+}
+
 function submissionsQueryFromSearchParams(searchParams: URLSearchParams): string {
   const folderId = searchParams.get("folderId");
   const templateId = searchParams.get("templateId");
@@ -71,8 +86,8 @@ export default function FormsHistoryPageClient({ mode = "operator" }: FormsHisto
       ? "/api/super-templates"
       : "/api/templates";
     const [subRes, tRes] = await Promise.all([
-      fetch(`${fillContext.submissionsApi}${subQs}`, { cache: "no-store" }),
-      fetch(templatesListUrl, { cache: "no-store" }),
+      fetch(`${fillContext.submissionsApi}${subQs}`, { cache: "no-store", credentials: "include" }),
+      fetch(templatesListUrl, { cache: "no-store", credentials: "include" }),
     ]);
     const data = (await subRes.json()) as { submissions?: SubmissionRecord[] };
     const tData = (await tRes.json()) as { templates?: TemplateRecord[] };
@@ -89,11 +104,10 @@ export default function FormsHistoryPageClient({ mode = "operator" }: FormsHisto
   const scoped =
     Boolean(searchParams.get("folderId")) || Boolean(searchParams.get("templateId"));
   const back = historyBackHref(searchParams, fillContext);
-  const historyScopeForView = submissionsQueryFromSearchParams(searchParams);
   const description = scoped
     ? "Newest first for this view. Only your most recent submission in this list can be edited (including when it is already final). Open history from a folder or form to limit what appears here."
     : fillContext.skipFolderValidation
-      ? "Newest first across all super templates. Only your single most recent submission overall can be edited — including when it is already a final submission."
+      ? "Newest first across all super templates. Each form’s most recent submission can be edited; older ones open read-only by submission ID and timestamp."
       : "Newest first across all folders and forms. Only your single most recent submission overall can be edited — including when it is already a final submission.";
 
   return (
@@ -119,31 +133,39 @@ export default function FormsHistoryPageClient({ mode = "operator" }: FormsHisto
         ) : (
           <ul className="space-y-3">
             {submissions.map((s, index) => {
-              const isMostRecent = index === 0;
               const status = normalizeSubmissionStatus(s);
               const sid = readStableSubmissionIdFromBody(s) ?? s.id;
               const folderQ = s.folderId ? `&folderId=${encodeURIComponent(s.folderId)}` : "";
               const entryHref = sid
                 ? `${fillContext.formPath(s.templateId)}?submissionId=${encodeURIComponent(sid)}${folderQ}`
                 : "#";
-              const viewHref = sid
-                ? `${fillContext.viewPath(sid)}${historyScopeForView}`
-                : "#";
-              const canEdit = isMostRecent;
+              const viewHref = sid ? fillContext.viewPath(sid) : "#";
+              const newestByTemplate = newestSubmissionIdByTemplate(submissions);
+              const canEdit = scoped
+                ? index === 0
+                : Boolean(sid && newestByTemplate.get(s.templateId) === sid);
               const snapTitle =
                 s.templateSnapshot?.id === s.templateId ? s.templateSnapshot?.name?.trim() : "";
               const displayName = snapTitle || templates[s.templateId] || s.templateId;
 
               return (
                 <li
-                  key={`${sid || "row"}-${s.templateId}-${index}`}
+                  key={sid || `row-${s.templateId}-${index}`}
                   className="flex flex-col gap-3 rounded-xl border border-zinc-200/90 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <div className="font-semibold text-zinc-900">{displayName}</div>
                     <div className="mt-1 text-sm text-zinc-600">
-                      Updated {new Date(s.updatedAt ?? s.submittedAt).toLocaleString()}
+                      Filled {new Date(s.submittedAt).toLocaleString()}
+                      {s.updatedAt && s.updatedAt !== s.submittedAt
+                        ? ` · Updated ${new Date(s.updatedAt).toLocaleString()}`
+                        : null}
                     </div>
+                    {sid ? (
+                      <p className="mt-1 font-mono text-xs text-zinc-500" title={sid}>
+                        ID {shortSubmissionId(sid)}
+                      </p>
+                    ) : null}
                     <div className="mt-2">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -176,3 +198,4 @@ export default function FormsHistoryPageClient({ mode = "operator" }: FormsHisto
     </div>
   );
 }
+

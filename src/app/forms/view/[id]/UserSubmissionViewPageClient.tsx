@@ -314,7 +314,7 @@ export default function UserSubmissionViewPageClient({
     <div className="app-page">
       <PageHeader
         title={template?.name ?? "Submission"}
-        description={`${submission.username ?? "unknown"} · ${new Date(submission.submittedAt).toLocaleString()}`}
+        description={`${submission.username ?? "unknown"} · Filled ${new Date(submission.submittedAt).toLocaleString()} · ID ${submission.id}`}
       >
         <a className="ui-btn-secondary" href={historyHref}>
           ← View history

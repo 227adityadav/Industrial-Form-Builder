@@ -30,6 +30,7 @@ import { parseSubmissionGrids } from "@/lib/submission-grids";
 import type { FormSchema, GridBlockSection, GridData, TopField } from "@/types/form-schema";
 import type { RevealFillInstance, SubmissionRecord } from "@/types/submission";
 import { normalizeSubmissionStatus } from "@/types/submission";
+import { readStableSubmissionIdFromBody } from "@/lib/submission-identifiers";
 
 type FormEntryValues = TopFormLike & {
   footer: Record<string, unknown>;
@@ -206,42 +207,37 @@ export default function FillFormPageClient({
       }
 
       if (submissionId) {
-        const sRes = await fetch(fillContext.submissionApi(submissionId), { cache: "no-store" });
+        const sRes = await fetch(fillContext.submissionApi(submissionId), {
+          cache: "no-store",
+          credentials: "include",
+        });
         if (!sRes.ok) {
-          const recoverParams = new URLSearchParams({
-            templateId: id,
-            submissionStatus: "ongoing",
-            limit: "1",
-          });
-          if (folderId) recoverParams.set("folderId", folderId);
-          const recoverRes = await fetch(`${fillContext.submissionsApi}?${recoverParams.toString()}`, {
-            cache: "no-store",
-          });
-          if (recoverRes.ok) {
-            const recoverData = (await recoverRes.json()) as { submissions?: SubmissionRecord[] };
-            const latest = recoverData.submissions?.[0];
-            if (latest?.id) {
-              const next = new URLSearchParams();
-              next.set("submissionId", latest.id);
-              if (latest.folderId) next.set("folderId", latest.folderId);
-              router.replace(`${fillContext.formPath(id)}?${next.toString()}`);
-              return;
-            }
-          }
           if (!cancelled) {
             setStatus(
-              "Could not load this submission. It may be an old invalid draft link. Please open from Ongoing again."
+              fillContext.skipFolderValidation
+                ? "Could not load this submission. Open it again from View history using its ID."
+                : "Could not load this submission. It may be an old invalid draft link. Please open from Ongoing again."
             );
           }
           return;
         }
-        const listRes = await fetch(fillContext.submissionsApi, { cache: "no-store" });
+        const listRes = await fetch(fillContext.submissionsApi, {
+          cache: "no-store",
+          credentials: "include",
+        });
         if (!listRes.ok) {
           if (!cancelled) setStatus("Could not verify edit permission.");
           return;
         }
         const { submission: sub } = (await sRes.json()) as { submission: SubmissionRecord };
         if (cancelled) return;
+        const loadedSubmissionId = readStableSubmissionIdFromBody(sub) ?? sub.id;
+        if (loadedSubmissionId !== submissionId.trim()) {
+          if (!cancelled) {
+            setStatus("Submission ID mismatch. Please reopen from View history.");
+          }
+          return;
+        }
         const hasSubmissionTemplateId =
           typeof sub.templateId === "string" && sub.templateId.trim().length > 0;
         const hasFolderContext = typeof folderId === "string" && folderId.trim().length > 0;
@@ -300,10 +296,10 @@ export default function FillFormPageClient({
         const blockedHistoricalFinal =
           normalizeSubmissionStatus(sub) === "final" &&
           mostRecentId !== undefined &&
-          sub.id !== mostRecentId;
+          loadedSubmissionId !== mostRecentId;
         if (!cancelled) setBlockedEdit(blockedHistoricalFinal);
 
-        setExistingId(sub.id);
+        setExistingId(loadedSubmissionId);
         const split = splitSubmissionForEdit(sub, templateForSubmission);
         form.reset({
           top: split.baseTop as FormEntryValues["top"],
@@ -372,6 +368,7 @@ export default function FillFormPageClient({
         const res = await fetch(fillContext.submissionApi(existingId), {
           method: "PATCH",
           headers: { "content-type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             top: payload.top,
             grid: payload.grid,
@@ -389,6 +386,7 @@ export default function FillFormPageClient({
         const res = await fetch(fillContext.submissionsApi, {
           method: "POST",
           headers: { "content-type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(payload),
         });
         if (!res.ok) {

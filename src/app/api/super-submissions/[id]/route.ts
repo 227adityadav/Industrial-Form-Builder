@@ -52,8 +52,13 @@ function byUpdatedDesc(a: SubmissionRecord, b: SubmissionRecord) {
   return tb - ta;
 }
 
-function isUsersMostRecentSubmission(all: SubmissionRecord[], current: SubmissionRecord): boolean {
-  const mine = all.filter((s) => s.username === current.username);
+function isUsersMostRecentForTemplate(
+  all: SubmissionRecord[],
+  current: SubmissionRecord
+): boolean {
+  const mine = all.filter(
+    (s) => s.username === current.username && s.templateId === current.templateId
+  );
   if (mine.length === 0) return false;
   const sorted = [...mine].sort(byUpdatedDesc);
   return sorted[0].id === current.id;
@@ -110,7 +115,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const submissions = (await listSuperSubmissionsAll())
     .map(coerceRecord)
     .filter((s): s is SubmissionRecord => s !== null);
-  const idx = submissions.findIndex((s) => s.id === id);
+  const idx = submissions.findIndex((s) => (readStableSubmissionIdFromBody(s) ?? s.id) === id);
   if (idx === -1) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -121,9 +126,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (normalizeSubmissionStatus(current) === "final") {
-    if (!isUsersMostRecentSubmission(submissions, current)) {
+    if (!isUsersMostRecentForTemplate(submissions, current)) {
       return NextResponse.json(
-        { error: "Only your most recent submission can be edited. Older final submissions are read-only." },
+        {
+          error:
+            "Only your most recent submission for this template can be edited. Older final submissions are read-only.",
+        },
         { status: 403 }
       );
     }
